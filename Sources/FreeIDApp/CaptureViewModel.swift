@@ -17,10 +17,14 @@ final class CaptureViewModel {
 
     /// Latest live compliance report from the camera (nil until the first frame).
     var liveReport: ComplianceReport?
-    /// Captured full-resolution photo, before export.
-    var capturedImage: CGImage?
-    /// Final spec-sized export.
-    var exportedImage: CGImage?
+    /// Final spec-sized export, as JPEG data (Sendable across the capture boundary).
+    var exportedData: Data?
+    /// True while a capture is being processed.
+    var isCapturing = false
+    /// Drives presentation of the result screen.
+    var showResult = false
+    /// Set when a capture failed (e.g. no single face found at the moment of capture).
+    var captureError: String?
 
     let camera = CameraController()
 
@@ -36,6 +40,26 @@ final class CaptureViewModel {
     }
 
     var isLiveCompliant: Bool { liveReport?.isCompliant ?? false }
+
+    /// Capture a still and run it through the export pipeline. On success, `exportedData`
+    /// holds the spec-sized photo and `showResult` flips true.
+    func capture() {
+        guard !isCapturing else { return }
+        isCapturing = true
+        captureError = nil
+        camera.captureAndExport { data in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.isCapturing = false
+                if let data {
+                    self.exportedData = data
+                    self.showResult = true
+                } else {
+                    self.captureError = "Couldn't make a compliant photo — keep one face in frame and try again."
+                }
+            }
+        }
+    }
 
     func specsGroupedByCountry() -> [(country: String, specs: [PhotoSpec])] {
         library.countries.map { ($0, library.specs(country: $0)) }

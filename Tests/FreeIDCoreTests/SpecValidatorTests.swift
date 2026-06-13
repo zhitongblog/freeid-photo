@@ -63,10 +63,17 @@ final class SpecValidatorTests: XCTestCase {
         XCTAssertEqual(check(r, "headHeight").status, .fail)
     }
 
-    func testOffCenterFails() throws {
-        let s = try spec("cn-1inch")
-        let m = with(compliantMetrics(for: s)) { $0.faceCenterX = 0.75 }
-        XCTAssertEqual(check(SpecValidator.validate(m, against: s), "centering").status, .fail)
+    func testOffCenterFailsForStrictSpecButOnlyWarnsForEditAllowed() throws {
+        // Strict (US): centering is a hard fail — nothing may be cropped/altered.
+        let us = try spec("us-passport")
+        let mUS = with(compliantMetrics(for: us)) { $0.faceCenterX = 0.75 }
+        XCTAssertEqual(check(SpecValidator.validate(mUS, against: us), "centering").status, .fail)
+        // Edit-allowed (CN): centering is auto-fixable by crop → warning, shutter still unlocks.
+        let cn = try spec("cn-1inch")
+        let mCN = with(compliantMetrics(for: cn)) { $0.faceCenterX = 0.75 }
+        let r = SpecValidator.validate(mCN, against: cn)
+        XCTAssertEqual(check(r, "centering").status, .warn)
+        XCTAssertTrue(r.isCompliant, "post-fixable warning must not block capture")
     }
 
     func testTiltedHeadFails() throws {
@@ -105,16 +112,40 @@ final class SpecValidatorTests: XCTestCase {
 
     // MARK: - Lighting
 
-    func testTooDarkFails() throws {
-        let s = try spec("cn-1inch")
+    func testTooDarkFailsForStrictSpec() throws {
+        let s = try spec("us-passport")
         let m = with(compliantMetrics(for: s)) { $0.brightness = 0.1 }
         XCTAssertEqual(check(SpecValidator.validate(m, against: s), "exposure").status, .fail)
     }
 
-    func testTooBrightFails() throws {
-        let s = try spec("cn-1inch")
+    func testTooBrightFailsForStrictSpec() throws {
+        let s = try spec("us-passport")
         let m = with(compliantMetrics(for: s)) { $0.brightness = 0.99 }
         XCTAssertEqual(check(SpecValidator.validate(m, against: s), "exposure").status, .fail)
+    }
+
+    /// The core of the per-country policy: for an edit-allowed spec, fixable problems
+    /// (framing + background + exposure) never block capture; only the physically
+    /// un-fixable essentials do.
+    func testEditAllowedSpecOnlyBlocksOnPhysicalEssentials() throws {
+        let cn = try spec("cn-1inch")
+        // Every post-fixable thing wrong at once...
+        var m = compliantMetrics(for: cn)
+        m = with(m) {
+            $0.faceCenterX = 0.8                 // centering
+            $0.brightness = 0.15                 // exposure
+            $0.backgroundUniformity = 0.3        // bg uniformity
+            $0.backgroundMeanHex = "#3366CC"     // bg color
+            $0.chinY = $0.crownY + (cn.headHeight.max + 8) / cn.outputSize.heightMM // head too big
+        }
+        let r1 = SpecValidator.validate(m, against: cn)
+        XCTAssertTrue(r1.isCompliant, "fixable problems must not block capture for edit-allowed specs")
+        XCTAssertEqual(r1.overall, .warn)
+        // ...but a physical essential wrong (closed eyes) DOES block, even for CN.
+        let m2 = with(m) { $0.eyesOpen = false }
+        let r2 = SpecValidator.validate(m2, against: cn)
+        XCTAssertFalse(r2.isCompliant, "closed eyes can't be fixed in post — must block")
+        XCTAssertEqual(check(r2, "eyesOpen").status, .fail)
     }
 
     // MARK: - Glasses

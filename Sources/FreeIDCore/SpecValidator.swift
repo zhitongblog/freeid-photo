@@ -180,8 +180,32 @@ public enum SpecValidator {
             ))
         }
 
+        // Per-country leniency: when the destination allows digital editing, the checks
+        // we can fix in the export pipeline (crop reframes head/eye/centering, background
+        // replacement, exposure adjustment) should NOT block capture — they become
+        // advisory warnings that get auto-corrected on export. Only the things that must
+        // be physically right at capture time (face count, pose, eyes, mouth, expression,
+        // glasses) keep blocking. Strict countries (US, UK...) keep every check hard,
+        // because nothing may be altered after the shot.
+        if spec.digitalEditPolicy == .allowed {
+            checks = checks.map { c in
+                guard c.status == .fail, Self.postFixableChecks.contains(c.id) else { return c }
+                return CheckResult(
+                    id: c.id, title: c.title, status: .warn,
+                    detail: LocalizedText(en: c.detail.en + " — auto-corrected on export",
+                                          zh: c.detail.zh + "（导出时自动校正）"))
+            }
+        }
+
         return ComplianceReport(specID: spec.id, checks: checks)
     }
+
+    /// Checks the export pipeline can fix after capture (crop, background replace,
+    /// exposure). Downgraded from fail to warn for edit-allowed specs.
+    static let postFixableChecks: Set<String> = [
+        "headHeight", "eyeLine", "centering",
+        "background.uniformity", "background.color", "exposure",
+    ]
 
     // MARK: - Check builders
 

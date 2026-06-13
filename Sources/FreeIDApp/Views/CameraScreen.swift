@@ -19,15 +19,31 @@ struct CameraScreen: View {
                 Spacer()
                 ComplianceHUD(report: model.liveReport, languageCode: localeCode)
                     .padding(.horizontal)
-                ShutterButton(enabled: model.isLiveCompliant) {
-                    // Capture is wired to the photo output on device; left as the
-                    // integration point verified via /ios-qa.
+                ShutterButton(enabled: model.isLiveCompliant && !model.isCapturing) {
+                    model.capture()
                 }
                 .padding(.bottom, 24)
+            }
+
+            if model.isCapturing {
+                Color.black.opacity(0.4).ignoresSafeArea()
+                ProgressView().tint(.white).scaleEffect(1.5)
             }
         }
         .onAppear { model.camera.start() }
         .onDisappear { model.camera.stop() }
+        .fullScreenCover(isPresented: $model.showResult) {
+            if let data = model.exportedData {
+                ResultScreen(imageData: data, spec: model.selectedSpec)
+            }
+        }
+        .alert("Capture failed", isPresented: .init(
+            get: { model.captureError != nil },
+            set: { if !$0 { model.captureError = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(model.captureError ?? "")
+        }
     }
 }
 

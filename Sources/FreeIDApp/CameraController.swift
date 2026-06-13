@@ -6,33 +6,37 @@ import AVFoundation
 #if canImport(CoreImage)
 import CoreImage
 #endif
+#if canImport(ImageIO)
+import ImageIO
+#endif
 
-/// Drives the front camera and runs the compliance engine on a throttled stream of
-/// frames, publishing a live ComplianceReport for the chosen spec.
+/// Drives the front camera: a throttled live stream for the compliance HUD, plus a
+/// full-resolution still capture that runs straight through the export pipeline.
 ///
-///   AVCaptureSession ─frames─▶ (serial queue, every Nth) ─▶ VisionComplianceEngine
-///        ─▶ SpecValidator ─▶ onReport(report) on the main actor
+///   live:    AVCaptureVideoDataOutput ─(every Nth frame)→ engine → SpecValidator → onReport
+///   capture: AVCapturePhotoOutput ─→ engine.metrics → ExportPipeline.export → JPEG Data
 ///
-/// On the Simulator there is no camera, so no frames arrive; the app still builds and
-/// the UI renders. Live accuracy is verified on a real device (see /ios-qa).
+/// Capture work stays on the camera queue; only Sendable `Data` crosses back to the UI,
+/// so it's clean under Swift 6 concurrency. On the Simulator there is no camera, so the
+/// app still builds and renders; capture/preview are verified on a real device.
 final class CameraController: NSObject {
 
-    /// The spec the live stream is validated against. Set from the view model.
     var spec: PhotoSpec?
-    /// Called on the main actor with each new live report.
     var onReport: (@MainActor (ComplianceReport) -> Void)?
 
     #if canImport(AVFoundation) && os(iOS)
     let session = AVCaptureSession()
-    private let output = AVCaptureVideoDataOutput()
-    private let queue = DispatchQueue(label: "freeid.camera.frames")
+    private let videoOutput = AVCaptureVideoDataOutput()
+    private let photoOutput = AVCapturePhotoOutput()
+    private let queue = DispatchQueue(label: "freeid.camera")
     private let engine = VisionComplianceEngine()
+    private let pipeline = ExportPipeline()
     private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
     private var frameCounter = 0
     private let processEveryNthFrame = 4
     private var configured = false
+    private var captureCompletion: (@Sendable (Data?) -> Void)?
 
-    /// Request permission and start the session.
     func start() {
         AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
             guard granted, let self else { return }
@@ -40,8 +44,18 @@ final class CameraController: NSObject {
         }
     }
 
-    func stop() {
-        queue.async { [weak self] in self?.session.stopRunning() }
+    func stop() { queue.async { [weak self] in self?.session.stopRunning() } }
+
+    /// Capture a still and run it through the export pipeline for `spec`. For edit-allowed
+    /// specs the background is replaced to meet the spec color; strict specs keep the real
+    /// photo (crop/resize only). Returns spec-sized JPEG data, or nil on failure.
+    func captureAndExport(completion: @escaping @Sendable (Data?) -> Void) {
+        queue.async {
+            guard self.spec != nil else { completion(nil); return }
+            self.captureCompletion = completion
+            let settings = AVCapturePhotoSettings()
+            self.photoOutput.capturePhoto(with: settings, delegate: self)
+        }
     }
 
     private func configureIfNeeded() {
@@ -50,16 +64,20 @@ final class CameraController: NSObject {
         session.beginConfiguration()
         session.sessionPreset = .photo
         if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
-           let input = try? AVCaptureDeviceInput(device: device),
-           session.canAddInput(input) {
+           let input = try? AVCaptureDeviceInput(device: device), session.canAddInput(input) {
             session.addInput(input)
         }
-        output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
-        output.alwaysDiscardsLateVideoFrames = true
-        output.setSampleBufferDelegate(self, queue: queue)
-        if session.canAddOutput(output) { session.addOutput(output) }
+        videoOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
+        videoOutput.alwaysDiscardsLateVideoFrames = true
+        videoOutput.setSampleBufferDelegate(self, queue: queue)
+        if session.canAddOutput(videoOutput) { session.addOutput(videoOutput) }
+        if session.canAddOutput(photoOutput) { session.addOutput(photoOutput) }
         session.commitConfiguration()
     }
+    #else
+    func start() {}
+    func stop() {}
+    func captureAndExport(completion: @escaping @Sendable (Data?) -> Void) { completion(nil) }
     #endif
 }
 
@@ -70,13 +88,32 @@ extension CameraController: AVCaptureVideoDataOutputSampleBufferDelegate {
         frameCounter += 1
         guard frameCounter % processEveryNthFrame == 0,
               let spec, let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-
         let ci = CIImage(cvPixelBuffer: pixelBuffer)
-        guard let cg = ciContext.createCGImage(ci, from: ci.extent) else { return }
-        guard let metrics = try? engine.metrics(from: cg) else { return }
+        guard let cg = ciContext.createCGImage(ci, from: ci.extent),
+              let metrics = try? engine.metrics(from: cg) else { return }
         let report = SpecValidator.validate(metrics, against: spec)
         let cb = onReport
         Task { @MainActor in cb?(report) }
+    }
+}
+
+extension CameraController: AVCapturePhotoCaptureDelegate {
+    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto,
+                     error: Error?) {
+        let completion = captureCompletion
+        captureCompletion = nil
+        func finish(_ data: Data?) { DispatchQueue.main.async { completion?(data) } }
+
+        guard error == nil, let fileData = photo.fileDataRepresentation(),
+              let src = CGImageSourceCreateWithData(fileData as CFData, nil),
+              let cg = CGImageSourceCreateImageAtIndex(src, 0, nil),
+              let spec else { finish(nil); return }
+
+        guard let metrics = try? engine.metrics(from: cg), metrics.faceCount == 1 else { finish(nil); return }
+        let opts = ExportPipeline.Options(replaceBackground: spec.digitalEditPolicy == .allowed)
+        guard let out = try? pipeline.export(image: cg, spec: spec, metrics: metrics, options: opts),
+              let data = try? pipeline.jpegData(out) else { finish(nil); return }
+        finish(data)
     }
 }
 #endif
