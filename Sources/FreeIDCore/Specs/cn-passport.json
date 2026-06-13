@@ -1,0 +1,22 @@
+{
+  "id": "cn-passport",
+  "country": "CN",
+  "docType": "passport",
+  "displayName": { "en": "China Passport", "zh": "中国护照" },
+  "outputSize": { "widthMM": 33, "heightMM": 48 },
+  "dpi": 300,
+  "headHeight": { "min": 28, "max": 33 },
+  "eyeLineFromBottom": { "min": 27, "max": 36 },
+  "background": {
+    "name": { "en": "White", "zh": "白色" },
+    "hex": "#FFFFFF",
+    "toleranceDeltaE": 12,
+    "minUniformity": 0.88
+  },
+  "digitalEditPolicy": "allowed",
+  "expression": { "neutral": true, "mouthClosed": true, "eyesOpen": true },
+  "glasses": "allowedNoGlare",
+  "fileSpec": { "pixelWidth": 354, "pixelHeight": 472, "minKB": 30, "maxKB": 80, "format": "jpeg" },
+  "officialSourceURL": "https://cs.mfa.gov.cn/zlbg/bgzl/hzlxz/202204/t20220408_10665772.shtml",
+  "lastVerified": "2026-06-13"
+}

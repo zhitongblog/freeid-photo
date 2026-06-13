@@ -6,7 +6,7 @@
   "outputSize": { "widthMM": 33, "heightMM": 48 },
   "dpi": 300,
   "headHeight": { "min": 28, "max": 33 },
-  "eyeLineFromBottom": { "min": 27, "max": 35 },
+  "eyeLineFromBottom": { "min": 27, "max": 36 },
   "background": {
     "name": { "en": "White", "zh": "白色" },
     "hex": "#FFFFFF",
@@ -15,7 +15,7 @@
   },
   "digitalEditPolicy": "allowed",
   "expression": { "neutral": true, "mouthClosed": true, "eyesOpen": true },
-  "glasses": "forbidden",
+  "glasses": "allowedNoGlare",
   "fileSpec": { "pixelWidth": 354, "pixelHeight": 472, "minKB": 40, "maxKB": 120, "format": "jpeg" },
   "officialSourceURL": "https://www.visaforchina.cn/",
   "lastVerified": "2026-06-13"

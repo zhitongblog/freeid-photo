@@ -5,12 +5,12 @@
   "displayName": { "en": "Schengen Visa", "zh": "申根签证" },
   "outputSize": { "widthMM": 35, "heightMM": 45 },
   "dpi": 300,
-  "headHeight": { "min": 31.5, "max": 36 },
+  "headHeight": { "min": 32, "max": 36 },
   "eyeLineFromBottom": { "min": 27, "max": 33 },
   "background": {
-    "name": { "en": "Light grey", "zh": "浅灰色" },
+    "name": { "en": "Light grey or white", "zh": "浅灰或白色" },
     "hex": "#ECECEC",
-    "toleranceDeltaE": 14,
+    "toleranceDeltaE": 15,
     "minUniformity": 0.88
   },
   "digitalEditPolicy": "allowed",

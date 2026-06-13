@@ -1,0 +1,22 @@
+{
+  "id": "au-passport",
+  "country": "AU",
+  "docType": "passport",
+  "displayName": { "en": "Australia Passport", "zh": "澳大利亚护照" },
+  "outputSize": { "widthMM": 35, "heightMM": 45 },
+  "dpi": 300,
+  "headHeight": { "min": 32, "max": 36 },
+  "eyeLineFromBottom": { "min": 27, "max": 33 },
+  "background": {
+    "name": { "en": "Light grey or off-white", "zh": "浅灰或米白" },
+    "hex": "#EDEDED",
+    "toleranceDeltaE": 15,
+    "minUniformity": 0.88
+  },
+  "digitalEditPolicy": "strict",
+  "expression": { "neutral": true, "mouthClosed": true, "eyesOpen": true },
+  "glasses": "allowedNoGlare",
+  "fileSpec": null,
+  "officialSourceURL": "https://www.passports.gov.au/getting-passport-how-to/photo-guidelines",
+  "lastVerified": "2026-06-13"
+}

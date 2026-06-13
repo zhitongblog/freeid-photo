@@ -64,8 +64,25 @@ and the per-country background-color policy.
 ## Spec data
 
 Specs live as one JSON file per country+document in `Sources/FreeIDCore/Specs/`. Each
-carries `officialSourceURL` and `lastVerified`. **The seed values are transcribed from
-public sources and must be verified against official government tables before release.**
+carries `officialSourceURL` and `lastVerified`. 16 specs across 10 countries:
+
+| Country | Specs | Edit policy |
+|---|---|---|
+| China | 1-inch, 2-inch, ID card, passport, visa | allowed |
+| US | passport, visa | strict (no AI/edits) |
+| Canada | passport (50×70mm) | strict |
+| UK | passport | strict |
+| Australia | passport | strict |
+| South Korea | passport | strict |
+| Schengen / EU | visa | allowed |
+| Japan | visa (45×45mm) | allowed |
+| India | passport (630×810px), e-visa 2×2 | allowed |
+| Singapore | passport (400×514px) | allowed |
+
+Dimensions are verified against official government sources (linked per spec). Where a
+government does not publish an explicit eye-line position, that range is derived from the
+head-height rule and the photo layout — re-confirm against the live official checklist
+before relying on it for a submission, since requirements change.
 
 ## `freeid-mcp` — MCP server
 
@@ -99,5 +116,5 @@ unlocks only when every check for the selected spec is green.
 - [x] ExportPipeline: crop / align / background replace / size normalization / print sheet
 - [x] FreeIDApp: SwiftUI live-compliance viewfinder + spec picker (builds & runs on Simulator)
 - [x] freeid-mcp: MCP server (list/get/validate/export)
-- [ ] Verify each bundled spec's numbers against the official government source
+- [x] 16 specs across 10 countries, dimensions verified against official sources
 - [ ] On-device tuning: crown/hairline calibration, glasses/glare detection, live capture (/ios-qa)

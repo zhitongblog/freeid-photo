@@ -1,0 +1,22 @@
+{
+  "id": "kr-passport",
+  "country": "KR",
+  "docType": "passport",
+  "displayName": { "en": "South Korea Passport", "zh": "韩国护照" },
+  "outputSize": { "widthMM": 35, "heightMM": 45 },
+  "dpi": 300,
+  "headHeight": { "min": 32, "max": 36 },
+  "eyeLineFromBottom": { "min": 27, "max": 33 },
+  "background": {
+    "name": { "en": "Plain white", "zh": "纯白色" },
+    "hex": "#FFFFFF",
+    "toleranceDeltaE": 12,
+    "minUniformity": 0.9
+  },
+  "digitalEditPolicy": "strict",
+  "expression": { "neutral": true, "mouthClosed": true, "eyesOpen": true },
+  "glasses": "allowedNoGlare",
+  "fileSpec": null,
+  "officialSourceURL": "https://www.passport.go.kr/",
+  "lastVerified": "2026-06-13"
+}

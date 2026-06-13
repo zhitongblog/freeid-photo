@@ -5,7 +5,7 @@
   "displayName": { "en": "Japan Visa", "zh": "日本签证" },
   "outputSize": { "widthMM": 45, "heightMM": 45 },
   "dpi": 300,
-  "headHeight": { "min": 27, "max": 34 },
+  "headHeight": { "min": 32, "max": 36 },
   "eyeLineFromBottom": { "min": 20, "max": 28 },
   "background": {
     "name": { "en": "Plain white", "zh": "纯白色" },

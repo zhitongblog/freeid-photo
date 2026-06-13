@@ -1,0 +1,22 @@
+{
+  "id": "in-passport",
+  "country": "IN",
+  "docType": "passport",
+  "displayName": { "en": "India Passport", "zh": "印度护照" },
+  "outputSize": { "widthMM": 35, "heightMM": 45 },
+  "dpi": 300,
+  "headHeight": { "min": 34, "max": 38 },
+  "eyeLineFromBottom": { "min": 24, "max": 32 },
+  "background": {
+    "name": { "en": "Plain white", "zh": "纯白色" },
+    "hex": "#FFFFFF",
+    "toleranceDeltaE": 12,
+    "minUniformity": 0.9
+  },
+  "digitalEditPolicy": "allowed",
+  "expression": { "neutral": true, "mouthClosed": true, "eyesOpen": true },
+  "glasses": "forbidden",
+  "fileSpec": { "pixelWidth": 630, "pixelHeight": 810, "minKB": 10, "maxKB": 300, "format": "jpeg" },
+  "officialSourceURL": "https://portal2.passportindia.gov.in/",
+  "lastVerified": "2026-06-13"
+}

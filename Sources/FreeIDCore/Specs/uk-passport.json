@@ -10,7 +10,7 @@
   "background": {
     "name": { "en": "Light grey or cream", "zh": "浅灰或米色" },
     "hex": "#EDEDED",
-    "toleranceDeltaE": 14,
+    "toleranceDeltaE": 15,
     "minUniformity": 0.88
   },
   "digitalEditPolicy": "strict",

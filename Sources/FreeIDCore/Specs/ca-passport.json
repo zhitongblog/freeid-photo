@@ -1,0 +1,22 @@
+{
+  "id": "ca-passport",
+  "country": "CA",
+  "docType": "passport",
+  "displayName": { "en": "Canada Passport", "zh": "加拿大护照" },
+  "outputSize": { "widthMM": 50, "heightMM": 70 },
+  "dpi": 300,
+  "headHeight": { "min": 31, "max": 36 },
+  "eyeLineFromBottom": { "min": 42, "max": 50 },
+  "background": {
+    "name": { "en": "Plain white or light", "zh": "纯白或浅色" },
+    "hex": "#FFFFFF",
+    "toleranceDeltaE": 14,
+    "minUniformity": 0.88
+  },
+  "digitalEditPolicy": "strict",
+  "expression": { "neutral": true, "mouthClosed": true, "eyesOpen": true },
+  "glasses": "allowedNoGlare",
+  "fileSpec": null,
+  "officialSourceURL": "https://www.canada.ca/en/immigration-refugees-citizenship/services/canadian-passports/photos.html",
+  "lastVerified": "2026-06-13"
+}

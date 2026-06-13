@@ -1,0 +1,22 @@
+{
+  "id": "sg-passport",
+  "country": "SG",
+  "docType": "passport",
+  "displayName": { "en": "Singapore Passport", "zh": "新加坡护照" },
+  "outputSize": { "widthMM": 35, "heightMM": 45 },
+  "dpi": 300,
+  "headHeight": { "min": 25, "max": 35 },
+  "eyeLineFromBottom": { "min": 26, "max": 33 },
+  "background": {
+    "name": { "en": "Plain white", "zh": "纯白色" },
+    "hex": "#FFFFFF",
+    "toleranceDeltaE": 12,
+    "minUniformity": 0.9
+  },
+  "digitalEditPolicy": "allowed",
+  "expression": { "neutral": true, "mouthClosed": true, "eyesOpen": true },
+  "glasses": "allowedNoGlare",
+  "fileSpec": { "pixelWidth": 400, "pixelHeight": 514, "minKB": 10, "maxKB": 60, "format": "jpeg" },
+  "officialSourceURL": "https://www.ica.gov.sg/",
+  "lastVerified": "2026-06-13"
+}

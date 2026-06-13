@@ -5,9 +5,11 @@ final class SpecLibraryTests: XCTestCase {
 
     func testLibraryLoadsBundledSpecs() throws {
         let lib = try SpecLibrary.bundled()
-        XCTAssertGreaterThanOrEqual(lib.specs.count, 7, "expected the seed spec set")
+        XCTAssertGreaterThanOrEqual(lib.specs.count, 16, "expected the verified spec set")
         XCTAssertNotNil(lib.spec(id: "us-passport"))
         XCTAssertNotNil(lib.spec(id: "cn-1inch"))
+        XCTAssertNotNil(lib.spec(id: "ca-passport"))
+        XCTAssertNotNil(lib.spec(id: "cn-idcard"))
     }
 
     func testSpecIDsAreUnique() throws {

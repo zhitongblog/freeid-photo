@@ -1,0 +1,22 @@
+{
+  "id": "in-visa",
+  "country": "IN",
+  "docType": "visa",
+  "displayName": { "en": "India e-Visa 2x2", "zh": "印度电子签证 2x2" },
+  "outputSize": { "widthMM": 51, "heightMM": 51 },
+  "dpi": 300,
+  "headHeight": { "min": 25, "max": 38 },
+  "eyeLineFromBottom": { "min": 26, "max": 36 },
+  "background": {
+    "name": { "en": "Plain white", "zh": "纯白色" },
+    "hex": "#FFFFFF",
+    "toleranceDeltaE": 12,
+    "minUniformity": 0.9
+  },
+  "digitalEditPolicy": "allowed",
+  "expression": { "neutral": true, "mouthClosed": true, "eyesOpen": true },
+  "glasses": "allowedNoGlare",
+  "fileSpec": { "pixelWidth": 600, "pixelHeight": 600, "minKB": 10, "maxKB": 300, "format": "jpeg" },
+  "officialSourceURL": "https://indianvisaonline.gov.in/",
+  "lastVerified": "2026-06-13"
+}
