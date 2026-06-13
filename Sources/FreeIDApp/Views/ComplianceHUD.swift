@@ -1,54 +1,55 @@
 import SwiftUI
 import FreeIDCore
 
-/// The live checklist overlay. Each requirement shows green (pass), amber (warn), or
-/// red (fail) in real time as the user adjusts. This is the product's core moment:
-/// the user sees exactly what to fix and shoots only when everything is green.
+/// Compact live status. Instead of listing every check, it shows one clear headline
+/// (ready vs. what's blocking) and only the items that still need attention — so a
+/// good shot reads as a single green line, not a wall of checkmarks.
 struct ComplianceHUD: View {
     let report: ComplianceReport?
     let languageCode: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if let report {
-                ForEach(report.checks, id: \.id) { check in
-                    HStack(spacing: 8) {
-                        Image(systemName: icon(check.status))
-                            .foregroundStyle(color(check.status))
-                        Text(check.title.text(forLanguage: languageCode))
-                            .font(.subheadline).bold()
-                        Spacer()
-                        if check.status != .pass {
-                            Text(check.detail.text(forLanguage: languageCode))
-                                .font(.caption)
-                                .foregroundStyle(.white.opacity(0.85))
-                                .lineLimit(1).truncationMode(.tail)
-                        }
-                    }
+        VStack(alignment: .leading, spacing: 8) {
+            headline
+            ForEach(issues.prefix(3), id: \.id) { check in
+                HStack(spacing: 8) {
+                    Image(systemName: check.status == .fail ? "xmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .foregroundStyle(check.status == .fail ? .red : .yellow)
+                    Text(check.detail.text(forLanguage: languageCode))
+                        .font(.subheadline)
                 }
-            } else {
-                Label("Point the camera at your face", systemImage: "viewfinder")
-                    .font(.subheadline)
             }
         }
         .foregroundStyle(.white)
-        .padding(12)
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.black.opacity(0.45), in: RoundedRectangle(cornerRadius: 14))
+        .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 16))
     }
 
-    private func icon(_ s: CheckStatus) -> String {
-        switch s {
-        case .pass: return "checkmark.circle.fill"
-        case .warn: return "exclamationmark.triangle.fill"
-        case .fail: return "xmark.circle.fill"
+    private var issues: [CheckResult] {
+        guard let report else { return [] }
+        // Show blocking fails first, then advisory warnings.
+        return report.failures + report.warnings
+    }
+
+    @ViewBuilder private var headline: some View {
+        if report == nil {
+            label("Point the camera at your face", "viewfinder", .white)
+        } else if report!.isCompliant {
+            label(zhEn("可以拍了，点绿色快门", "Ready — tap the green button"), "checkmark.circle.fill", .green)
+        } else {
+            label(zhEn("再调整一下", "Almost there — adjust below"), "camera.metering.center.weighted", .white)
         }
     }
-    private func color(_ s: CheckStatus) -> Color {
-        switch s {
-        case .pass: return .green
-        case .warn: return .yellow
-        case .fail: return .red
+
+    private func label(_ text: String, _ icon: String, _ color: Color) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon).foregroundStyle(color)
+            Text(text).font(.headline)
         }
+    }
+
+    private func zhEn(_ zh: String, _ en: String) -> String {
+        languageCode.lowercased().hasPrefix("zh") ? zh : en
     }
 }

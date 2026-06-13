@@ -98,16 +98,21 @@ final class SpecValidatorTests: XCTestCase {
 
     // MARK: - Expression / eyes
 
-    func testClosedEyesFails() throws {
+    func testClosedEyesIsAdvisoryNotBlocking() throws {
+        // Eye/mouth detection from landmarks is unreliable, so it advises but never blocks.
         let s = try spec("us-passport")
         let m = with(compliantMetrics(for: s)) { $0.eyesOpen = false }
-        XCTAssertEqual(check(SpecValidator.validate(m, against: s), "eyesOpen").status, .fail)
+        let r = SpecValidator.validate(m, against: s)
+        XCTAssertEqual(check(r, "eyesOpen").status, .warn)
+        XCTAssertTrue(r.isCompliant, "unreliable eye detection must not lock the shutter")
     }
 
-    func testOpenMouthFails() throws {
+    func testOpenMouthIsAdvisoryNotBlocking() throws {
         let s = try spec("us-passport")
         let m = with(compliantMetrics(for: s)) { $0.mouthClosed = false }
-        XCTAssertEqual(check(SpecValidator.validate(m, against: s), "mouthClosed").status, .fail)
+        let r = SpecValidator.validate(m, against: s)
+        XCTAssertEqual(check(r, "mouthClosed").status, .warn)
+        XCTAssertTrue(r.isCompliant, "false 'mouth open' must never block capture")
     }
 
     // MARK: - Lighting
@@ -141,27 +146,22 @@ final class SpecValidatorTests: XCTestCase {
         let r1 = SpecValidator.validate(m, against: cn)
         XCTAssertTrue(r1.isCompliant, "fixable problems must not block capture for edit-allowed specs")
         XCTAssertEqual(r1.overall, .warn)
-        // ...but a physical essential wrong (closed eyes) DOES block, even for CN.
-        let m2 = with(m) { $0.eyesOpen = false }
+        // ...but a reliable, decisive essential wrong (no face) DOES block, even for CN.
+        let m2 = with(m) { $0.faceCount = 0 }
         let r2 = SpecValidator.validate(m2, against: cn)
-        XCTAssertFalse(r2.isCompliant, "closed eyes can't be fixed in post — must block")
-        XCTAssertEqual(check(r2, "eyesOpen").status, .fail)
+        XCTAssertFalse(r2.isCompliant, "no face detected must block capture")
+        XCTAssertEqual(check(r2, "faceCount").status, .fail)
     }
 
     // MARK: - Glasses
 
-    func testGlassesFailWhenForbidden() throws {
+    func testGlassesIsAdvisoryNotBlocking() throws {
+        // Glasses detection isn't reliable (and isn't wired yet) — advisory, never blocks.
         let s = try spec("us-passport") // glasses forbidden
         let m = with(compliantMetrics(for: s)) { $0.glassesDetected = true }
-        XCTAssertEqual(check(SpecValidator.validate(m, against: s), "glasses").status, .fail)
-    }
-
-    func testGlassesGlareFailsButPlainGlassesPassWhenAllowed() throws {
-        let s = try spec("cn-1inch") // allowedNoGlare
-        let glare = with(compliantMetrics(for: s)) { $0.glassesDetected = true; $0.glareOnGlasses = true }
-        XCTAssertEqual(check(SpecValidator.validate(glare, against: s), "glasses").status, .fail)
-        let noGlare = with(compliantMetrics(for: s)) { $0.glassesDetected = true; $0.glareOnGlasses = false }
-        XCTAssertEqual(check(SpecValidator.validate(noGlare, against: s), "glasses").status, .pass)
+        let r = SpecValidator.validate(m, against: s)
+        XCTAssertNotEqual(check(r, "glasses").status, .fail)
+        XCTAssertTrue(r.isCompliant)
     }
 
     // MARK: - The EUREKA: background-color policy is per-country

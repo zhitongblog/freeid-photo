@@ -4,9 +4,10 @@ import Foundation
 /// conservative values common to ICAO 9303-derived requirements; a spec-specific
 /// override can be threaded through later if any country diverges.
 public struct ValidationTolerances: Sendable {
-    public var maxRollDegrees: Double = 5
-    public var maxYawDegrees: Double = 8
-    public var maxPitchDegrees: Double = 8
+    // Generous, forgiving pose limits — a slight natural tilt should not lock the shutter.
+    public var maxRollDegrees: Double = 10
+    public var maxYawDegrees: Double = 14
+    public var maxPitchDegrees: Double = 14
     /// Max allowed |faceCenterX - 0.5|.
     public var maxCenterOffset: Double = 0.06
     public var minBrightness: Double = 0.35
@@ -180,6 +181,16 @@ public enum SpecValidator {
             ))
         }
 
+        // Expression / eye / glasses detection from face landmarks is NOT reliable enough
+        // to block capture — the lip-gap heuristic flagged "mouth open" on clearly-closed
+        // mouths. Keep these advisory for every spec: shown so the user can self-check
+        // (people judge their own expression better than a landmark ratio), never locking
+        // the shutter. Reliable, decisive checks (one face, pose, geometry, color) still gate.
+        checks = checks.map { c in
+            guard c.status == .fail, Self.advisoryChecks.contains(c.id) else { return c }
+            return CheckResult(id: c.id, title: c.title, status: .warn, detail: c.detail)
+        }
+
         // Per-country leniency: when the destination allows digital editing, the checks
         // we can fix in the export pipeline (crop reframes head/eye/centering, background
         // replacement, exposure adjustment) should NOT block capture — they become
@@ -205,6 +216,12 @@ public enum SpecValidator {
     static let postFixableChecks: Set<String> = [
         "headHeight", "eyeLine", "centering",
         "background.uniformity", "background.color", "exposure",
+    ]
+
+    /// Checks driven by unreliable landmark heuristics. Advisory for EVERY spec — shown
+    /// as warnings, never blocking capture, so a false "mouth open" can't lock the shutter.
+    static let advisoryChecks: Set<String> = [
+        "mouthClosed", "neutral", "eyesOpen", "glasses",
     ]
 
     // MARK: - Check builders
