@@ -1,0 +1,22 @@
+{
+  "id": "us-passport",
+  "country": "US",
+  "docType": "passport",
+  "displayName": { "en": "US Passport / Visa 2x2", "zh": "美国护照/签证 2x2" },
+  "outputSize": { "widthMM": 51, "heightMM": 51 },
+  "dpi": 300,
+  "headHeight": { "min": 25.4, "max": 34.9 },
+  "eyeLineFromBottom": { "min": 28.6, "max": 34.9 },
+  "background": {
+    "name": { "en": "Plain white or off-white", "zh": "纯白或米白" },
+    "hex": "#FFFFFF",
+    "toleranceDeltaE": 12,
+    "minUniformity": 0.9
+  },
+  "digitalEditPolicy": "strict",
+  "expression": { "neutral": true, "mouthClosed": true, "eyesOpen": true },
+  "glasses": "forbidden",
+  "fileSpec": { "pixelWidth": 600, "pixelHeight": 600, "minKB": 54, "maxKB": 10240, "format": "jpeg" },
+  "officialSourceURL": "https://travel.state.gov/content/travel/en/passports/how-apply/photos.html",
+  "lastVerified": "2026-06-13"
+}

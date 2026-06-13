@@ -1,0 +1,22 @@
+{
+  "id": "schengen-visa",
+  "country": "EU",
+  "docType": "visa",
+  "displayName": { "en": "Schengen Visa", "zh": "申根签证" },
+  "outputSize": { "widthMM": 35, "heightMM": 45 },
+  "dpi": 300,
+  "headHeight": { "min": 31.5, "max": 36 },
+  "eyeLineFromBottom": { "min": 27, "max": 33 },
+  "background": {
+    "name": { "en": "Light grey", "zh": "浅灰色" },
+    "hex": "#ECECEC",
+    "toleranceDeltaE": 14,
+    "minUniformity": 0.88
+  },
+  "digitalEditPolicy": "allowed",
+  "expression": { "neutral": true, "mouthClosed": true, "eyesOpen": true },
+  "glasses": "allowedNoGlare",
+  "fileSpec": null,
+  "officialSourceURL": "https://home-affairs.ec.europa.eu/",
+  "lastVerified": "2026-06-13"
+}

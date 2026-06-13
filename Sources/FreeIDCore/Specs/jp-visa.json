@@ -1,0 +1,22 @@
+{
+  "id": "jp-visa",
+  "country": "JP",
+  "docType": "visa",
+  "displayName": { "en": "Japan Visa", "zh": "日本签证" },
+  "outputSize": { "widthMM": 45, "heightMM": 45 },
+  "dpi": 300,
+  "headHeight": { "min": 27, "max": 34 },
+  "eyeLineFromBottom": { "min": 20, "max": 28 },
+  "background": {
+    "name": { "en": "Plain white", "zh": "纯白色" },
+    "hex": "#FFFFFF",
+    "toleranceDeltaE": 12,
+    "minUniformity": 0.88
+  },
+  "digitalEditPolicy": "allowed",
+  "expression": { "neutral": true, "mouthClosed": true, "eyesOpen": true },
+  "glasses": "allowedNoGlare",
+  "fileSpec": null,
+  "officialSourceURL": "https://www.mofa.go.jp/",
+  "lastVerified": "2026-06-13"
+}

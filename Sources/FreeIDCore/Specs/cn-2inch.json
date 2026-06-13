@@ -1,0 +1,22 @@
+{
+  "id": "cn-2inch",
+  "country": "CN",
+  "docType": "general",
+  "displayName": { "en": "China 2-inch", "zh": "中国二寸" },
+  "outputSize": { "widthMM": 35, "heightMM": 49 },
+  "dpi": 300,
+  "headHeight": { "min": 28, "max": 33 },
+  "eyeLineFromBottom": { "min": 27, "max": 35 },
+  "background": {
+    "name": { "en": "White", "zh": "白色" },
+    "hex": "#FFFFFF",
+    "toleranceDeltaE": 14,
+    "minUniformity": 0.85
+  },
+  "digitalEditPolicy": "allowed",
+  "expression": { "neutral": false, "mouthClosed": true, "eyesOpen": true },
+  "glasses": "allowedNoGlare",
+  "fileSpec": null,
+  "officialSourceURL": "https://www.gov.cn/",
+  "lastVerified": "2026-06-13"
+}

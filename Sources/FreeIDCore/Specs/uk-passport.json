@@ -1,0 +1,22 @@
+{
+  "id": "uk-passport",
+  "country": "GB",
+  "docType": "passport",
+  "displayName": { "en": "UK Passport", "zh": "英国护照" },
+  "outputSize": { "widthMM": 35, "heightMM": 45 },
+  "dpi": 300,
+  "headHeight": { "min": 29, "max": 34 },
+  "eyeLineFromBottom": { "min": 26, "max": 32 },
+  "background": {
+    "name": { "en": "Light grey or cream", "zh": "浅灰或米色" },
+    "hex": "#EDEDED",
+    "toleranceDeltaE": 14,
+    "minUniformity": 0.88
+  },
+  "digitalEditPolicy": "strict",
+  "expression": { "neutral": true, "mouthClosed": true, "eyesOpen": true },
+  "glasses": "allowedNoGlare",
+  "fileSpec": null,
+  "officialSourceURL": "https://www.gov.uk/photos-for-passports",
+  "lastVerified": "2026-06-13"
+}
