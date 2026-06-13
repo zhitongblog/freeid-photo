@@ -51,10 +51,18 @@ func loadCGImage(_ path: String) -> CGImage {
 }
 
 /// Get FaceMetrics from either a FaceMetrics JSON or a real image file.
-func metricsFromInput(_ path: String) -> FaceMetrics {
+///
+/// A real image yields RAW full-frame metrics, which must be reframed to the spec's crop
+/// before validating (see `ExportGeometry.reprojected`) — otherwise head/eye/centering are
+/// measured against the whole sensor frame and wrongly fail. A FaceMetrics JSON is treated
+/// as already framed (the hand-authored / test-fixture contract) and passed through as-is.
+func metricsFromInput(_ path: String, framedFor spec: PhotoSpec) -> FaceMetrics {
     let ext = (path as NSString).pathExtension.lowercased()
     if imageExtensions.contains(ext) {
-        do { return try VisionComplianceEngine().metrics(from: loadCGImage(path)) }
+        do {
+            let raw = try VisionComplianceEngine().metrics(from: loadCGImage(path))
+            return ExportGeometry.reprojected(raw, spec: spec)
+        }
         catch { fail("vision analysis failed: \(error)") }
     }
     guard let data = FileManager.default.contents(atPath: path) else { fail("cannot read \(path)") }
@@ -62,7 +70,7 @@ func metricsFromInput(_ path: String) -> FaceMetrics {
     catch { fail("invalid FaceMetrics JSON: \(error)") }
 }
 #else
-func metricsFromInput(_ path: String) -> FaceMetrics {
+func metricsFromInput(_ path: String, framedFor spec: PhotoSpec) -> FaceMetrics {
     guard let data = FileManager.default.contents(atPath: path) else { fail("cannot read \(path)") }
     do { return try JSONDecoder().decode(FaceMetrics.self, from: data) }
     catch { fail("invalid FaceMetrics JSON: \(error)") }
@@ -133,7 +141,7 @@ case "validate":
     guard let specID = option("spec") else { fail("missing --spec <id>") }
     let lib = loadLibrary()
     guard let spec = lib.spec(id: specID) else { fail("unknown spec id: \(specID)") }
-    let metrics = metricsFromInput(path)
+    let metrics = metricsFromInput(path, framedFor: spec)
     let report = SpecValidator.validate(metrics, against: spec)
     if asJSON {
         printJSON(report)

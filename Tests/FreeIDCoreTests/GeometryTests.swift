@@ -105,3 +105,102 @@ final class ExportGeometryTests: XCTestCase {
         XCTAssertLessThanOrEqual(r.y + r.height, 1200.0001)
     }
 }
+
+/// Reprojection is the fix for "face position easily fails": raw full-frame metrics are
+/// reframed through the export crop before validation, so head/eye/centering describe the
+/// photo that would actually be produced — not the whole sensor frame.
+final class ReprojectionTests: XCTestCase {
+
+    func spec() throws -> PhotoSpec {
+        // us-passport is the worst case: strict edit policy keeps geometry as HARD fails,
+        // so before the fix these checks lock the shutter forever.
+        try XCTUnwrap(try SpecLibrary.bundled().spec(id: "us-passport"))
+    }
+
+    /// A typical front-camera selfie: head ~25% of a 3:4 frame, roughly centered. This is a
+    /// COMPLIANT shot once cropped, yet raw full-frame validation fails head-height + eye-line.
+    func smallCenteredFace() -> FaceMetrics {
+        FaceMetrics(
+            imageWidth: 1080, imageHeight: 1440, faceCount: 1,
+            crownY: 0.20, chinY: 0.45, eyeLineY: 0.30, faceCenterX: 0.52,
+            rollDegrees: 0, yawDegrees: 0, pitchDegrees: 0,
+            eyesOpen: true, mouthClosed: true, neutralExpression: true,
+            backgroundUniformity: 0.95, backgroundMeanHex: "#FFFFFF",
+            glassesDetected: false, glareOnGlasses: false, brightness: 0.6)
+    }
+
+    func status(_ report: ComplianceReport, _ id: String) -> CheckStatus? {
+        report.checks.first { $0.id == id }?.status
+    }
+
+    func testRawFullFrameMetricsWronglyFail() throws {
+        let s = try spec()
+        let report = SpecValidator.validate(smallCenteredFace(), against: s)
+        // The bug: a fine selfie reads as "head too small" and "eyes too high" on the full frame.
+        XCTAssertEqual(status(report, "headHeight"), .fail)
+        XCTAssertEqual(status(report, "eyeLine"), .fail)
+        XCTAssertFalse(report.isCompliant)
+    }
+
+    func testReprojectionMakesTheSameFaceCompliant() throws {
+        let s = try spec()
+        let framed = ExportGeometry.reprojected(smallCenteredFace(), spec: s)
+        let report = SpecValidator.validate(framed, against: s)
+        XCTAssertEqual(status(report, "headHeight"), .pass)
+        XCTAssertEqual(status(report, "eyeLine"), .pass)
+        XCTAssertEqual(status(report, "centering"), .pass)
+        XCTAssertTrue(report.isCompliant, "reframed selfie should unlock the shutter")
+    }
+
+    /// When the crop is unclamped, head/eye/center land exactly on the spec's target values.
+    func testUnclampedReprojectionLandsOnTarget() throws {
+        let s = try spec()
+        let framed = ExportGeometry.reprojected(smallCenteredFace(), spec: s)
+        let targetHeadFrac = s.headHeight.mid / s.outputSize.heightMM
+        let targetEyeFromBottom = s.eyeLineFromBottom.mid / s.outputSize.heightMM
+        XCTAssertEqual(framed.headFraction, targetHeadFrac, accuracy: 0.005)
+        XCTAssertEqual(framed.eyeFromBottomFraction, targetEyeFromBottom, accuracy: 0.005)
+        XCTAssertEqual(framed.faceCenterX, 0.5, accuracy: 0.005)
+    }
+
+    /// Reprojection must NOT paper over real problems. A face jammed against the frame edge
+    /// can't be centered by any crop, so centering stays a fail after reframing.
+    func testReprojectionPreservesGenuineEdgeFailure() throws {
+        let s = try spec()
+        var offEdge = smallCenteredFace()
+        offEdge = FaceMetrics(
+            imageWidth: offEdge.imageWidth, imageHeight: offEdge.imageHeight, faceCount: 1,
+            crownY: offEdge.crownY, chinY: offEdge.chinY, eyeLineY: offEdge.eyeLineY,
+            faceCenterX: 0.95, // crammed to the right edge
+            rollDegrees: 0, yawDegrees: 0, pitchDegrees: 0,
+            eyesOpen: true, mouthClosed: true, neutralExpression: true,
+            backgroundUniformity: 0.95, backgroundMeanHex: "#FFFFFF",
+            glassesDetected: false, glareOnGlasses: false, brightness: 0.6)
+        let report = SpecValidator.validate(ExportGeometry.reprojected(offEdge, spec: s), against: s)
+        XCTAssertEqual(status(report, "centering"), .fail)
+    }
+
+    /// Non-geometry fields (pose, exposure, background) are not touched by reprojection.
+    func testReprojectionPreservesNonGeometryFields() throws {
+        let s = try spec()
+        let raw = smallCenteredFace()
+        let framed = ExportGeometry.reprojected(raw, spec: s)
+        XCTAssertEqual(framed.rollDegrees, raw.rollDegrees)
+        XCTAssertEqual(framed.brightness, raw.brightness)
+        XCTAssertEqual(framed.backgroundUniformity, raw.backgroundUniformity)
+        XCTAssertEqual(framed.faceCount, raw.faceCount)
+    }
+
+    /// No face → nothing to reframe; pass through unchanged so "no face detected" still surfaces.
+    func testReprojectionNoOpWhenNoFace() throws {
+        let s = try spec()
+        let none = FaceMetrics(
+            imageWidth: 1080, imageHeight: 1440, faceCount: 0,
+            crownY: 0, chinY: 0, eyeLineY: 0, faceCenterX: 0.5,
+            rollDegrees: 0, yawDegrees: 0, pitchDegrees: 0,
+            eyesOpen: false, mouthClosed: false, neutralExpression: false,
+            backgroundUniformity: 0.9, backgroundMeanHex: "#FFFFFF",
+            glassesDetected: false, glareOnGlasses: false, brightness: 0.5)
+        XCTAssertEqual(ExportGeometry.reprojected(none, spec: s), none)
+    }
+}

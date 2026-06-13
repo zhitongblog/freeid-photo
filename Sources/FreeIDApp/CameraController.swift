@@ -91,7 +91,11 @@ extension CameraController: AVCaptureVideoDataOutputSampleBufferDelegate {
         let ci = CIImage(cvPixelBuffer: pixelBuffer)
         guard let cg = ciContext.createCGImage(ci, from: ci.extent),
               let metrics = try? engine.metrics(from: cg) else { return }
-        let report = SpecValidator.validate(metrics, against: spec)
+        // The live frame is the full sensor image, not pre-framed to the spec. Reproject
+        // through the export crop so head/eye/centering reflect the photo we'd actually
+        // produce — otherwise those checks fail on the whole frame and lock the shutter.
+        let framed = ExportGeometry.reprojected(metrics, spec: spec)
+        let report = SpecValidator.validate(framed, against: spec)
         let cb = onReport
         Task { @MainActor in cb?(report) }
     }

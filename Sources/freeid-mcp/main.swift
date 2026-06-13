@@ -101,8 +101,11 @@ func callTool(name: String, args: [String: Any]) -> (text: String, isError: Bool
             return ("cannot read image: \(path)", true)
         }
         do {
+            // Raw full-frame metrics must be reframed to the spec's crop before validating,
+            // or head/eye/centering fail against the whole frame. See ExportGeometry.reprojected.
             let metrics = try VisionComplianceEngine().metrics(from: cg)
-            let report = SpecValidator.validate(metrics, against: spec)
+            let framed = ExportGeometry.reprojected(metrics, spec: spec)
+            let report = SpecValidator.validate(framed, against: spec)
             return (jsonString(report), false)
         } catch { return ("vision failed: \(error)", true) }
         #else
