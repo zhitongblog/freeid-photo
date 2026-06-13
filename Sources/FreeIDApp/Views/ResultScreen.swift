@@ -28,29 +28,41 @@ struct ResultScreen: View {
                         .shadow(radius: 8)
                 }
                 #endif
+                Label(zhEn("已按规格生成，可直接使用", "Ready to use — sized to spec"), systemImage: "checkmark.seal.fill")
+                    .font(.headline).foregroundStyle(.green)
                 Text(spec.displayName.text(forLanguage: localeCode))
-                    .font(.headline)
+                    .font(.subheadline)
                 Text("\(spec.pixelWidth) × \(spec.pixelHeight) px · \(Int(spec.outputSize.widthMM))×\(Int(spec.outputSize.heightMM)) mm · \(spec.dpi) dpi")
                     .font(.caption).foregroundStyle(.secondary)
                 if spec.digitalEditPolicy == .strict {
-                    Label("This country requires an unedited photo — background was not replaced.",
+                    Label(zhEn("该国要求原图，未替换背景，请用纯色背景拍摄",
+                               "This country requires an unedited photo — background was not replaced."),
                           systemImage: "exclamationmark.shield")
                         .font(.caption).foregroundStyle(.orange)
                         .multilineTextAlignment(.center).padding(.horizontal)
                 }
                 Spacer()
                 saveButton
-                ShareLink(item: shareURL()) {
-                    Label("Share", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity)
+                HStack(spacing: 12) {
+                    Button { dismiss() } label: {
+                        Label(zhEn("重拍", "Retake"), systemImage: "arrow.counterclockwise")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    ShareLink(item: shareURL()) {
+                        Label(zhEn("分享", "Share"), systemImage: "square.and.arrow.up")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.bordered).padding(.horizontal)
+                .padding(.horizontal)
                 .padding(.bottom, 8)
             }
-            .navigationTitle("Your photo")
+            .navigationTitle(zhEn("你的证件照", "Your photo"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Done") { dismiss() }
+                    Button(zhEn("完成", "Done")) { dismiss() }
                 }
             }
         }
@@ -70,11 +82,15 @@ struct ResultScreen: View {
 
     private var saveLabel: String {
         switch saveState {
-        case .idle: return "Save to Photos"
-        case .saving: return "Saving…"
-        case .saved: return "Saved"
-        case .failed: return "Try again"
+        case .idle: return zhEn("保存到相册", "Save to Photos")
+        case .saving: return zhEn("保存中…", "Saving…")
+        case .saved: return zhEn("已保存", "Saved")
+        case .failed: return zhEn("再试一次", "Try again")
         }
+    }
+
+    private func zhEn(_ zh: String, _ en: String) -> String {
+        localeCode.hasPrefix("zh") ? zh : en
     }
 
     private func save() {

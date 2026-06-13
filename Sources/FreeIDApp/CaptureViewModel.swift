@@ -41,6 +41,41 @@ final class CaptureViewModel {
 
     var isLiveCompliant: Bool { liveReport?.isCompliant ?? false }
 
+    /// True once a single face is in frame. The shutter unlocks on THIS, not on full
+    /// compliance: capturing is always allowed when there's a face to work with, and the
+    /// export pipeline auto-corrects framing/background/exposure. Compliance is shown as
+    /// gentle live guidance, never a gate — this is a consumer app, not a pro checklist.
+    var hasFace: Bool {
+        liveReport?.checks.first { $0.id == "faceCount" }?.status == .pass
+    }
+
+    /// One friendly coaching line — the single most useful thing to adjust right now, or
+    /// `.ready` when we're good to shoot. Replaces the wall of red X's: we only nudge on
+    /// things the user must physically do (find the frame, move back/closer, sit straight).
+    /// Crop, centering drift, background and exposure are auto-fixed on export, so we stay
+    /// quiet about them.
+    var liveHint: CaptureHint {
+        guard let report = liveReport else { return .findFace }
+        if !hasFace {
+            let many = report.checks.contains { $0.id == "faceCount" && $0.detail.en.contains("More") }
+            return many ? .onePerson : .findFace
+        }
+        // Coach on geometry/pose whether it reads as fail (strict) or warn (auto-fix specs),
+        // because "move back a little" is genuinely useful guidance either way.
+        func bad(_ id: String) -> Bool {
+            report.checks.first { $0.id == id }?.status != .pass
+        }
+        if bad("pose") { return .straighten }
+        if bad("headHeight") || bad("eyeLine") {
+            // Head too small → move closer; too big → move back. Read the headHeight detail.
+            let small = report.checks.first { $0.id == "headHeight" }?.detail.en.contains("small") ?? true
+            return small ? .moveCloser : .moveBack
+        }
+        return .ready
+    }
+
+    enum CaptureHint: Equatable { case findFace, onePerson, straighten, moveCloser, moveBack, ready }
+
     /// Capture a still and run it through the export pipeline. On success, `exportedData`
     /// holds the spec-sized photo and `showResult` flips true.
     func capture() {
@@ -55,7 +90,9 @@ final class CaptureViewModel {
                     self.exportedData = data
                     self.showResult = true
                 } else {
-                    self.captureError = "Couldn't make a compliant photo — keep one face in frame and try again."
+                    self.captureError = localeCode.hasPrefix("zh")
+                        ? "没拍清楚，让脸保持在框里再试一次就好"
+                        : "Didn't catch that — keep your face in the frame and tap again."
                 }
             }
         }
