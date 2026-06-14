@@ -36,11 +36,19 @@ final class CameraController: NSObject {
     private let processEveryNthFrame = 4
     private var configured = false
     private var captureCompletion: (@Sendable (Data?) -> Void)?
+    private var captureDevice: AVCaptureDevice?
+    /// Tracks the physical orientation so we can deliver upright frames/photos. Knows the
+    /// front-camera mounting (which a hardcoded 90° gets wrong), so the still isn't sideways.
+    private var rotationCoordinator: Any?
 
     func start() {
         AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
             guard granted, let self else { return }
-            self.queue.async { self.configureIfNeeded(); self.session.startRunning() }
+            self.queue.async {
+                self.configureIfNeeded()
+                self.session.startRunning()
+                self.applyRotation(to: self.videoOutput.connection(with: .video))
+            }
         }
     }
 
@@ -52,6 +60,9 @@ final class CameraController: NSObject {
     func captureAndExport(completion: @escaping @Sendable (Data?) -> Void) {
         queue.async {
             guard self.spec != nil else { completion(nil); return }
+            // Orient the still to the CURRENT physical orientation at the moment of capture,
+            // so a portrait shot is delivered (and tagged) upright rather than sideways.
+            self.applyRotation(to: self.photoOutput.connection(with: .video))
             self.captureCompletion = completion
             let settings = AVCapturePhotoSettings()
             self.photoOutput.capturePhoto(with: settings, delegate: self)
@@ -66,24 +77,30 @@ final class CameraController: NSObject {
         if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
            let input = try? AVCaptureDeviceInput(device: device), session.canAddInput(input) {
             session.addInput(input)
+            captureDevice = device
         }
         videoOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
         videoOutput.alwaysDiscardsLateVideoFrames = true
         videoOutput.setSampleBufferDelegate(self, queue: queue)
         if session.canAddOutput(videoOutput) { session.addOutput(videoOutput) }
         if session.canAddOutput(photoOutput) { session.addOutput(photoOutput) }
-
-        // The app is portrait-locked, but the sensor's native frame is landscape. Force both
-        // the live frames and the still capture upright (portrait) so the geometry we measure
-        // and the photo we crop match what the user sees — otherwise a portrait shot exports
-        // sideways. (The preview layer already self-orients; these connections did not.)
-        for conn in [videoOutput.connection(with: .video), photoOutput.connection(with: .video)] {
-            guard let conn else { continue }
-            if #available(iOS 17.0, *), conn.isVideoRotationAngleSupported(90) {
-                conn.videoRotationAngle = 90 // 90° = portrait
-            }
-        }
         session.commitConfiguration()
+
+        // Connections exist only after the outputs are committed. The coordinator computes the
+        // correct rotation for THIS camera (front) and orientation — applied per capture below.
+        if #available(iOS 17.0, *), let device = captureDevice {
+            rotationCoordinator = AVCaptureDevice.RotationCoordinator(device: device, previewLayer: nil)
+        }
+    }
+
+    /// Set a connection's rotation to keep video/photo upright for the current orientation.
+    private func applyRotation(to connection: AVCaptureConnection?) {
+        guard let connection else { return }
+        if #available(iOS 17.0, *),
+           let coord = rotationCoordinator as? AVCaptureDevice.RotationCoordinator {
+            let angle = coord.videoRotationAngleForHorizonLevelCapture
+            if connection.isVideoRotationAngleSupported(angle) { connection.videoRotationAngle = angle }
+        }
     }
     #else
     func start() {}
