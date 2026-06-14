@@ -42,9 +42,8 @@ let imageExtensions: Set<String> = ["jpg", "jpeg", "png", "heic", "heif", "tiff"
 
 #if canImport(ImageIO)
 func loadCGImage(_ path: String) -> CGImage {
-    let url = URL(fileURLWithPath: path)
-    guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
-          let img = CGImageSourceCreateImageAtIndex(src, 0, nil) else {
+    // Honor EXIF orientation so a portrait phone photo isn't analyzed/exported sideways.
+    guard let img = ImageLoading.uprightCGImage(fromFile: path) else {
         fail("cannot decode image: \(path)")
     }
     return img

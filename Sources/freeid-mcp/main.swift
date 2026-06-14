@@ -96,8 +96,7 @@ func callTool(name: String, args: [String: Any]) -> (text: String, isError: Bool
         guard let path = args["path"] as? String, let specID = args["spec"] as? String,
               let spec = library.spec(id: specID) else { return ("missing path/spec or unknown spec", true) }
         #if canImport(ImageIO)
-        guard let src = CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil),
-              let cg = CGImageSourceCreateImageAtIndex(src, 0, nil) else {
+        guard let cg = ImageLoading.uprightCGImage(fromFile: path) else {  // honor EXIF orientation
             return ("cannot read image: \(path)", true)
         }
         do {
@@ -118,8 +117,7 @@ func callTool(name: String, args: [String: Any]) -> (text: String, isError: Bool
             return ("missing path/spec/out or unknown spec", true)
         }
         #if canImport(ImageIO)
-        guard let src = CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil),
-              let cg = CGImageSourceCreateImageAtIndex(src, 0, nil) else {
+        guard let cg = ImageLoading.uprightCGImage(fromFile: path) else {  // honor EXIF orientation
             return ("cannot read image", true)
         }
         do {

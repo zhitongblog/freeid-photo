@@ -72,6 +72,17 @@ final class CameraController: NSObject {
         videoOutput.setSampleBufferDelegate(self, queue: queue)
         if session.canAddOutput(videoOutput) { session.addOutput(videoOutput) }
         if session.canAddOutput(photoOutput) { session.addOutput(photoOutput) }
+
+        // The app is portrait-locked, but the sensor's native frame is landscape. Force both
+        // the live frames and the still capture upright (portrait) so the geometry we measure
+        // and the photo we crop match what the user sees — otherwise a portrait shot exports
+        // sideways. (The preview layer already self-orients; these connections did not.)
+        for conn in [videoOutput.connection(with: .video), photoOutput.connection(with: .video)] {
+            guard let conn else { continue }
+            if #available(iOS 17.0, *), conn.isVideoRotationAngleSupported(90) {
+                conn.videoRotationAngle = 90 // 90° = portrait
+            }
+        }
         session.commitConfiguration()
     }
     #else
@@ -109,8 +120,7 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
         func finish(_ data: Data?) { DispatchQueue.main.async { completion?(data) } }
 
         guard error == nil, let fileData = photo.fileDataRepresentation(),
-              let src = CGImageSourceCreateWithData(fileData as CFData, nil),
-              let cg = CGImageSourceCreateImageAtIndex(src, 0, nil),
+              let cg = ImageLoading.uprightCGImage(from: fileData, context: ciContext),
               let spec else { finish(nil); return }
 
         guard let metrics = try? engine.metrics(from: cg), metrics.faceCount == 1 else { finish(nil); return }
