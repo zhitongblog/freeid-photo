@@ -45,7 +45,8 @@ final class CaptureViewModel {
         }
     }
 
-    /// Standard ID-photo background colors offered to the user.
+    /// Background colors offered for GENERAL portrait photos. The white/blue/red trio is the
+    /// real-world standard for China 一寸/二寸 (résumés, certificates, social security, etc.).
     struct BackgroundChoice: Identifiable, Equatable {
         let name: LocalizedText
         let hex: String
@@ -53,13 +54,22 @@ final class CaptureViewModel {
         static let white = BackgroundChoice(name: .init(en: "White", zh: "白底"), hex: "#FFFFFF")
         static let blue  = BackgroundChoice(name: .init(en: "Blue",  zh: "蓝底"), hex: "#438EDB")
         static let red   = BackgroundChoice(name: .init(en: "Red",   zh: "红底"), hex: "#D9001B")
-        static let gray  = BackgroundChoice(name: .init(en: "Gray",  zh: "灰底"), hex: "#D8D8D8")
-        static let all: [BackgroundChoice] = [.white, .blue, .red, .gray]
+        static let all: [BackgroundChoice] = [.white, .blue, .red]
     }
 
-    /// Background swatches only make sense where digital replacement is allowed (e.g. China);
-    /// strict specs (US/UK passports) must use a real backdrop, so we hide the picker.
-    var canChooseBackground: Bool { selectedSpec.digitalEditPolicy == .allowed }
+    /// Color choice is offered ONLY for general portrait photos, which genuinely accept
+    /// multiple backgrounds. Official documents (passports/visas/ID cards) mandate ONE
+    /// specific background — even when digital editing is allowed we replace it to the
+    /// spec's required color, never an arbitrary one — so the picker stays hidden there.
+    var canChooseBackground: Bool {
+        selectedSpec.digitalEditPolicy == .allowed && selectedSpec.docType == .general
+    }
+
+    /// True when the background was auto-replaced to the document's required color (an
+    /// editable official doc) — shown as reassurance instead of a color picker.
+    var backgroundLockedToSpec: Bool {
+        selectedSpec.digitalEditPolicy == .allowed && selectedSpec.docType != .general
+    }
 
     /// Pick a background color and instantly re-export the last shot in that color.
     func chooseBackground(_ hex: String) {

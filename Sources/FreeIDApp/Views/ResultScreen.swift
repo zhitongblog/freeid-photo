@@ -16,6 +16,8 @@ struct ResultScreen: View {
 
     private var spec: PhotoSpec { model.selectedSpec }
     private var imageData: Data? { model.exportedData }
+    /// The spec's required background color name, e.g. "白色" / "White".
+    private var bgName: String { spec.background.name.text(forLanguage: localeCode) }
 
     var body: some View {
         NavigationStack {
@@ -37,9 +39,15 @@ struct ResultScreen: View {
 
                 if model.canChooseBackground {
                     backgroundPicker
+                } else if model.backgroundLockedToSpec {
+                    // Editable official doc: background was set to the REQUIRED color, not a choice.
+                    Label(zhEn("已按该证件要求使用\(bgName)背景", "Set to the required \(bgName) background"),
+                          systemImage: "checkmark.circle")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center).padding(.horizontal)
                 } else {
-                    Label(zhEn("该国要求原图，未替换背景，请用纯色背景拍摄",
-                               "This country requires an unedited photo — use a real plain backdrop."),
+                    Label(zhEn("该国要求原图，未替换背景，请用\(bgName)纯色背景拍摄",
+                               "This country requires an unedited photo — shoot against a real \(bgName) backdrop."),
                           systemImage: "exclamationmark.shield")
                         .font(.caption).foregroundStyle(.orange)
                         .multilineTextAlignment(.center).padding(.horizontal)
