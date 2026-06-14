@@ -17,13 +17,27 @@ struct CameraScreen: View {
             HeadGuide(spec: model.selectedSpec, ready: model.isLiveCompliant && model.hasFace)
                 .ignoresSafeArea()
 
-            VStack {
+            VStack(spacing: 0) {
                 Spacer()
                 CoachLine(hint: model.liveHint)
                     .padding(.horizontal)
                     .padding(.bottom, 6)
-                ShutterButton(enabled: model.hasFace && !model.isCapturing) {
-                    model.capture()
+                if model.usingBackCamera {
+                    Text(zhEn("后置相机 · 让他人帮你拍", "Back camera — have someone shoot you"))
+                        .font(.caption).foregroundStyle(.white)
+                        .padding(.horizontal, 12).padding(.vertical, 5)
+                        .background(.black.opacity(0.4), in: Capsule())
+                        .padding(.bottom, 8)
+                }
+                ZStack {
+                    ShutterButton(enabled: model.hasFace && !model.isCapturing) {
+                        model.capture()
+                    }
+                    HStack {
+                        Spacer()
+                        FlipCameraButton { model.flipCamera() }
+                            .padding(.trailing, 36)
+                    }
                 }
                 .padding(.bottom, 24)
             }
@@ -36,9 +50,7 @@ struct CameraScreen: View {
         .onAppear { model.camera.start() }
         .onDisappear { model.camera.stop() }
         .fullScreenCover(isPresented: $model.showResult) {
-            if let data = model.exportedData {
-                ResultScreen(imageData: data, spec: model.selectedSpec)
-            }
+            ResultScreen(model: model)
         }
         .alert("Capture failed", isPresented: .init(
             get: { model.captureError != nil },
@@ -161,6 +173,20 @@ private struct CoachLine: View {
         case .moveCloser:return zh ? "靠近一点" : "Move a little closer"
         case .moveBack:  return zh ? "往后退一点" : "Move back a little"
         }
+    }
+}
+
+/// Flip between the selfie camera and the back camera (so a friend can take the photo).
+private struct FlipCameraButton: View {
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "arrow.triangle.2.circlepath.camera.fill")
+                .font(.title2).foregroundStyle(.white)
+                .frame(width: 52, height: 52)
+                .background(.black.opacity(0.4), in: Circle())
+        }
+        .accessibilityLabel(zhEn("切换摄像头", "Switch camera"))
     }
 }
 

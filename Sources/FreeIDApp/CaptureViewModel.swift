@@ -26,6 +26,12 @@ final class CaptureViewModel {
     /// Set when a capture failed (e.g. no single face found at the moment of capture).
     var captureError: String?
 
+    /// Chosen background color (#RRGGBB). Applied on edit-allowed specs; ignored on strict
+    /// ones (which forbid background replacement). Defaults to white.
+    var backgroundHex: String = BackgroundChoice.white.hex
+    /// True when the back camera is active (someone else is taking the photo for you).
+    var usingBackCamera = false
+
     let camera = CameraController()
 
     init() {
@@ -37,6 +43,37 @@ final class CaptureViewModel {
         camera.onReport = { [weak self] report in
             self?.liveReport = report
         }
+    }
+
+    /// Standard ID-photo background colors offered to the user.
+    struct BackgroundChoice: Identifiable, Equatable {
+        let name: LocalizedText
+        let hex: String
+        var id: String { hex }
+        static let white = BackgroundChoice(name: .init(en: "White", zh: "白底"), hex: "#FFFFFF")
+        static let blue  = BackgroundChoice(name: .init(en: "Blue",  zh: "蓝底"), hex: "#438EDB")
+        static let red   = BackgroundChoice(name: .init(en: "Red",   zh: "红底"), hex: "#D9001B")
+        static let gray  = BackgroundChoice(name: .init(en: "Gray",  zh: "灰底"), hex: "#D8D8D8")
+        static let all: [BackgroundChoice] = [.white, .blue, .red, .gray]
+    }
+
+    /// Background swatches only make sense where digital replacement is allowed (e.g. China);
+    /// strict specs (US/UK passports) must use a real backdrop, so we hide the picker.
+    var canChooseBackground: Bool { selectedSpec.digitalEditPolicy == .allowed }
+
+    /// Pick a background color and instantly re-export the last shot in that color.
+    func chooseBackground(_ hex: String) {
+        backgroundHex = hex
+        guard canChooseBackground, exportedData != nil else { return }
+        camera.reexport(backgroundHex: hex) { data in
+            Task { @MainActor [weak self] in if let data { self?.exportedData = data } }
+        }
+    }
+
+    /// Flip between the selfie camera and the back camera (for a helper to shoot you).
+    func flipCamera() {
+        camera.switchCamera()
+        usingBackCamera.toggle()
     }
 
     var isLiveCompliant: Bool { liveReport?.isCompliant ?? false }
@@ -82,7 +119,7 @@ final class CaptureViewModel {
         guard !isCapturing else { return }
         isCapturing = true
         captureError = nil
-        camera.captureAndExport { data in
+        camera.captureAndExport(backgroundHex: canChooseBackground ? backgroundHex : nil) { data in
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.isCapturing = false

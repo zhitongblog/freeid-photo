@@ -28,9 +28,15 @@ public struct ExportPipeline: Sendable {
     }
 
     public struct Options: Sendable {
-        /// Replace the background with the spec's color. Rejected for `.strict` specs.
+        /// Replace the background with a solid color. Rejected for `.strict` specs.
         public var replaceBackground: Bool
-        public init(replaceBackground: Bool = false) { self.replaceBackground = replaceBackground }
+        /// Background color as #RRGGBB to composite behind the subject. When nil, the spec's
+        /// own `background.hex` is used. Lets the user pick white / blue / red / gray.
+        public var backgroundHex: String?
+        public init(replaceBackground: Bool = false, backgroundHex: String? = nil) {
+            self.replaceBackground = replaceBackground
+            self.backgroundHex = backgroundHex
+        }
     }
 
     private let context = CIContext(options: [.useSoftwareRenderer: false])
@@ -55,9 +61,9 @@ public struct ExportPipeline: Sendable {
         working = working.transformed(by: CGAffineTransform(
             translationX: -working.extent.origin.x, y: -working.extent.origin.y))
 
-        // 2. Optional background replacement.
+        // 2. Optional background replacement (user-chosen color, else the spec's default).
         if options.replaceBackground, let baseCG = render(working) {
-            working = try replaceBackground(of: baseCG, with: spec.background.hex)
+            working = try replaceBackground(of: baseCG, with: options.backgroundHex ?? spec.background.hex)
         }
 
         // 3. Resize to exact spec pixels.

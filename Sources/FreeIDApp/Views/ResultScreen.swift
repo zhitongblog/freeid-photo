@@ -5,43 +5,47 @@ import UIKit
 import Photos
 #endif
 
-/// Shows the finished spec-sized photo with the exact pixel size, and lets the user
-/// save it to Photos or share it. This is the payoff screen after a compliant capture.
+/// Shows the finished spec-sized photo, lets the user pick a background color (re-exported
+/// instantly), and save or share it. The payoff screen after a capture.
 struct ResultScreen: View {
-    let imageData: Data
-    let spec: PhotoSpec
+    @Bindable var model: CaptureViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var saveState: SaveState = .idle
 
     enum SaveState { case idle, saving, saved, failed }
 
+    private var spec: PhotoSpec { model.selectedSpec }
+    private var imageData: Data? { model.exportedData }
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                Spacer()
+            VStack(spacing: 16) {
+                Spacer(minLength: 8)
                 #if canImport(UIKit)
-                if let ui = UIImage(data: imageData) {
+                if let data = imageData, let ui = UIImage(data: data) {
                     Image(uiImage: ui)
                         .resizable().scaledToFit()
-                        .frame(maxHeight: 380)
+                        .frame(maxHeight: 360)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .shadow(radius: 8)
                 }
                 #endif
                 Label(zhEn("已按规格生成，可直接使用", "Ready to use — sized to spec"), systemImage: "checkmark.seal.fill")
                     .font(.headline).foregroundStyle(.green)
-                Text(spec.displayName.text(forLanguage: localeCode))
-                    .font(.subheadline)
-                Text("\(spec.pixelWidth) × \(spec.pixelHeight) px · \(Int(spec.outputSize.widthMM))×\(Int(spec.outputSize.heightMM)) mm · \(spec.dpi) dpi")
+                Text("\(spec.displayName.text(forLanguage: localeCode)) · \(spec.pixelWidth)×\(spec.pixelHeight)px")
                     .font(.caption).foregroundStyle(.secondary)
-                if spec.digitalEditPolicy == .strict {
+
+                if model.canChooseBackground {
+                    backgroundPicker
+                } else {
                     Label(zhEn("该国要求原图，未替换背景，请用纯色背景拍摄",
-                               "This country requires an unedited photo — background was not replaced."),
+                               "This country requires an unedited photo — use a real plain backdrop."),
                           systemImage: "exclamationmark.shield")
                         .font(.caption).foregroundStyle(.orange)
                         .multilineTextAlignment(.center).padding(.horizontal)
                 }
-                Spacer()
+
+                Spacer(minLength: 8)
                 saveButton
                 HStack(spacing: 12) {
                     Button { dismiss() } label: {
@@ -49,11 +53,13 @@ struct ResultScreen: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
-                    ShareLink(item: shareURL()) {
-                        Label(zhEn("分享", "Share"), systemImage: "square.and.arrow.up")
-                            .frame(maxWidth: .infinity)
+                    if let data = imageData {
+                        ShareLink(item: shareURL(data)) {
+                            Label(zhEn("分享", "Share"), systemImage: "square.and.arrow.up")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
                     }
-                    .buttonStyle(.bordered)
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 8)
@@ -68,6 +74,29 @@ struct ResultScreen: View {
         }
     }
 
+    /// Row of background color swatches; tapping re-exports the shot in that color.
+    private var backgroundPicker: some View {
+        VStack(spacing: 8) {
+            Text(zhEn("背景颜色", "Background")).font(.caption).foregroundStyle(.secondary)
+            HStack(spacing: 16) {
+                ForEach(CaptureViewModel.BackgroundChoice.all) { choice in
+                    let selected = model.backgroundHex == choice.hex
+                    Button {
+                        if saveState == .saved { saveState = .idle } // new color → allow re-save
+                        model.chooseBackground(choice.hex)
+                    } label: {
+                        Circle()
+                            .fill(Color(hex: choice.hex))
+                            .frame(width: 36, height: 36)
+                            .overlay(Circle().stroke(.gray.opacity(0.4), lineWidth: 1))
+                            .overlay(Circle().stroke(.tint, lineWidth: selected ? 3 : 0).padding(-3))
+                    }
+                    .accessibilityLabel(choice.name.text(forLanguage: localeCode))
+                }
+            }
+        }
+    }
+
     @ViewBuilder private var saveButton: some View {
         Button {
             save()
@@ -76,7 +105,7 @@ struct ResultScreen: View {
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
-        .disabled(saveState == .saving || saveState == .saved)
+        .disabled(saveState == .saving || saveState == .saved || imageData == nil)
         .padding(.horizontal)
     }
 
@@ -89,12 +118,9 @@ struct ResultScreen: View {
         }
     }
 
-    private func zhEn(_ zh: String, _ en: String) -> String {
-        localeCode.hasPrefix("zh") ? zh : en
-    }
-
     private func save() {
         #if canImport(UIKit)
+        guard let data = imageData else { return }
         saveState = .saving
         PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
             guard status == .authorized || status == .limited else {
@@ -103,7 +129,7 @@ struct ResultScreen: View {
             }
             PHPhotoLibrary.shared().performChanges {
                 let req = PHAssetCreationRequest.forAsset()
-                req.addResource(with: .photo, data: imageData, options: nil)
+                req.addResource(with: .photo, data: data, options: nil)
             } completionHandler: { ok, _ in
                 Task { @MainActor in saveState = ok ? .saved : .failed }
             }
@@ -112,10 +138,10 @@ struct ResultScreen: View {
     }
 
     /// Write the JPEG to a temp file so ShareLink can share a real image file.
-    private func shareURL() -> URL {
+    private func shareURL(_ data: Data) -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("FreeID-\(spec.id).jpg")
-        try? imageData.write(to: url)
+        try? data.write(to: url)
         return url
     }
 }

@@ -170,7 +170,7 @@ case "export":
     if metrics.faceCount != 1 { fail("expected exactly one face, found \(metrics.faceCount)") }
 
     let pipeline = ExportPipeline()
-    let opts = ExportPipeline.Options(replaceBackground: flag("replace-bg"))
+    let opts = ExportPipeline.Options(replaceBackground: flag("replace-bg"), backgroundHex: option("bg"))
     do {
         var out = try pipeline.export(image: cg, spec: spec, metrics: metrics, options: opts)
         if flag("sheet"), let sheet = pipeline.printSheet(photo: out, spec: spec) { out = sheet }
