@@ -1,13 +1,92 @@
 import SwiftUI
 
-/// doaipm. brand assets, matched to the live site doaipm.com (lowercase wordmark with the
-/// "ai" + "." in a blue→purple gradient, dark starfield theme).
+/// The 8 languages doaipm.com ships in. Resolved from the device's preferred languages.
+enum BrandLang {
+    case zh, zhTW, en, ja, ko, fr, de, it
+    static var current: BrandLang {
+        for id in Locale.preferredLanguages {
+            let l = id.lowercased()
+            if l.hasPrefix("zh") {
+                return (l.contains("hant") || l.contains("-tw") || l.contains("-hk") || l.contains("-mo")) ? .zhTW : .zh
+            }
+            if l.hasPrefix("ja") { return .ja }
+            if l.hasPrefix("ko") { return .ko }
+            if l.hasPrefix("fr") { return .fr }
+            if l.hasPrefix("de") { return .de }
+            if l.hasPrefix("it") { return .it }
+            if l.hasPrefix("en") { return .en }
+        }
+        return .en
+    }
+}
+
+/// One brand string in all 8 site languages; `.t` returns the device-language variant.
+struct BrandStr {
+    let zh, zhTW, en, ja, ko, fr, de, it: String
+    var t: String {
+        switch BrandLang.current {
+        case .zh: return zh; case .zhTW: return zhTW; case .en: return en; case .ja: return ja
+        case .ko: return ko; case .fr: return fr; case .de: return de; case .it: return it
+        }
+    }
+}
+
+/// doaipm. brand assets + copy, mirrored 1:1 from the live multilingual site doaipm.com.
 enum Brand {
     static let url = URL(string: "https://doaipm.com")!
     static let xURL = URL(string: "https://x.com/zhitong45")!
     static let gradient = LinearGradient(
         colors: [Color(red: 0.36, green: 0.56, blue: 0.98), Color(red: 0.62, green: 0.40, blue: 0.96)],
         startPoint: .leading, endPoint: .trailing)
+
+    static let slogan = BrandStr(
+        zh: "言出法随", zhTW: "言出法隨",
+        en: "Speak it. AI builds it.",
+        ja: "言葉にすれば、AIが作る", ko: "말하면 AI가 만든다",
+        fr: "Dites-le, l'IA le construit", de: "Sag es, die KI baut es",
+        it: "Dillo, l'IA lo costruisce")
+    static let subSlogan = BrandStr(
+        zh: "一句话，AI 就做出来", zhTW: "一句話，AI 就做出來",
+        en: "Say the word — Claude makes it real.",
+        ja: "一言で、AIがそれを実現する", ko: "한 마디면 AI가 바로 만들어 줍니다",
+        fr: "une phrase suffit", de: "Ein Satz — und es ist fertig",
+        it: "Una frase e il risultato è già pronto")
+    static let tagline = BrandStr(
+        zh: "成为 AI 时代的产品经理", zhTW: "成為 AI 時代的產品經理",
+        en: "Becoming a PM in the AI era",
+        ja: "AI 時代のプロダクトマネージャーになる", ko: "AI 시대의 제품 매니저 되기",
+        fr: "Devenir PM à l'ère de l'IA", de: "Produktmanager:in im KI-Zeitalter werden",
+        it: "Diventare PM nell'era dell'IA")
+    static let about = BrandStr(
+        zh: "FreeID Photo 是 doaipm. 用 AI 做出来的作品之一。",
+        zhTW: "FreeID Photo 是 doaipm. 用 AI 做出來的作品之一。",
+        en: "FreeID Photo is one of doaipm.'s products, built with AI.",
+        ja: "FreeID Photo は doaipm. が AI で作った作品のひとつです。",
+        ko: "FreeID Photo는 doaipm.이 AI로 만든 작품 중 하나입니다.",
+        fr: "FreeID Photo est l'un des produits de doaipm., conçu avec l'IA.",
+        de: "FreeID Photo ist eines von doaipm.s mit KI gebauten Produkten.",
+        it: "FreeID Photo è uno dei prodotti di doaipm., creato con l'IA.")
+    static let visit = BrandStr(
+        zh: "访问 doaipm.com", zhTW: "造訪 doaipm.com", en: "Visit doaipm.com",
+        ja: "doaipm.com を見る", ko: "doaipm.com 방문", fr: "Visiter doaipm.com",
+        de: "doaipm.com besuchen", it: "Visita doaipm.com")
+    static let followX = BrandStr(
+        zh: "在 X 关注 @zhitong45", zhTW: "在 X 追蹤 @zhitong45", en: "Follow @zhitong45 on X",
+        ja: "X で @zhitong45 をフォロー", ko: "X에서 @zhitong45 팔로우",
+        fr: "Suivre @zhitong45 sur X", de: "@zhitong45 auf X folgen", it: "Segui @zhitong45 su X")
+    static let aboutTitle = BrandStr(
+        zh: "关于", zhTW: "關於", en: "About", ja: "概要", ko: "소개",
+        fr: "À propos", de: "Über", it: "Info")
+    static let done = BrandStr(
+        zh: "完成", zhTW: "完成", en: "Done", ja: "完了", ko: "완료",
+        fr: "Terminé", de: "Fertig", it: "Fine")
+    // Result-screen footer: [prefix] doaipm. [suffix]
+    static let creditPrefix = BrandStr(
+        zh: "由 ", zhTW: "由 ", en: "by ", ja: "", ko: "", fr: "par ", de: "von ", it: "di ")
+    static let creditSuffix = BrandStr(
+        zh: " 出品 · doaipm.com", zhTW: " 出品 · doaipm.com", en: " · doaipm.com",
+        ja: " 制作 · doaipm.com", ko: " 제작 · doaipm.com",
+        fr: " · doaipm.com", de: " · doaipm.com", it: " · doaipm.com")
 }
 
 /// Tappable "doaipm." wordmark — the brand entry point used in nav bars and footers.
@@ -25,8 +104,8 @@ struct BrandWordmark: View {
     }
 }
 
-/// Personal-brand / about screen. FreeID Photo is a doaipm. product; this puts the brand
-/// front and centre, mirrors the doaipm.com look, and drives traffic to the site.
+/// Personal-brand / about screen. Mirrors the doaipm.com look and copy, in the device's
+/// language (the same 8 languages the site supports), and drives traffic to the site.
 struct AboutView: View {
     @Environment(\.dismiss) private var dismiss
 
@@ -38,22 +117,26 @@ struct AboutView: View {
                                startPoint: .top, endPoint: .bottom)
                     .ignoresSafeArea()
 
-                VStack(spacing: 18) {
+                VStack(spacing: 16) {
                     Spacer()
                     BrandWordmark(size: 56, base: .white)
-                    Text(zhEn("成为 AI 时代的产品经理", "Become an AI-era product manager"))
-                        .font(.headline).foregroundStyle(.white.opacity(0.92))
-                    Text(zhEn("言出法随 · 一句话，AI 就做出来", "Say it — and AI builds it"))
-                        .font(.subheadline).foregroundStyle(Brand.gradient)
-                    Text(zhEn("doaipm = DO · AI · PM。不懂技术反而是优势——你把想法说清楚，剩下交给 AI。FreeID Photo 就是这样做出来的作品之一。",
-                              "doaipm = DO · AI · PM. FreeID Photo is one of the products built exactly this way."))
+                    Text(Brand.slogan.t)
+                        .font(.title2.weight(.bold)).foregroundStyle(Brand.gradient)
+                        .multilineTextAlignment(.center).padding(.horizontal, 24)
+                    Text(Brand.subSlogan.t)
+                        .font(.subheadline).foregroundStyle(.white.opacity(0.85))
+                        .multilineTextAlignment(.center).padding(.horizontal, 28)
+                    Text(Brand.tagline.t)
                         .font(.footnote).foregroundStyle(.white.opacity(0.6))
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32).padding(.top, 6)
+                    Text(Brand.about.t)
+                        .font(.footnote).foregroundStyle(.white.opacity(0.55))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32).padding(.top, 8)
                     Spacer()
 
                     Link(destination: Brand.url) {
-                        Label(zhEn("访问 doaipm.com", "Visit doaipm.com"), systemImage: "safari.fill")
+                        Label(Brand.visit.t, systemImage: "safari.fill")
                             .font(.headline).foregroundStyle(.white)
                             .frame(maxWidth: .infinity).padding(.vertical, 14)
                             .background(Brand.gradient, in: RoundedRectangle(cornerRadius: 14))
@@ -61,17 +144,17 @@ struct AboutView: View {
                     .padding(.horizontal)
 
                     Link(destination: Brand.xURL) {
-                        Text(zhEn("在 X 关注 @zhitong45", "Follow @zhitong45 on X"))
+                        Text(Brand.followX.t)
                             .font(.subheadline).foregroundStyle(.white.opacity(0.8))
                     }
                     .padding(.bottom, 18)
                 }
             }
-            .navigationTitle(zhEn("关于", "About"))
+            .navigationTitle(Brand.aboutTitle.t)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(zhEn("完成", "Done")) { dismiss() }.tint(.white)
+                    Button(Brand.done.t) { dismiss() }.tint(.white)
                 }
             }
             .toolbarColorScheme(.dark, for: .navigationBar)

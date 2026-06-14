@@ -64,10 +64,10 @@ struct ResultScreen: View {
                 .padding(.horizontal)
 
                 Link(destination: Brand.url) {
-                    HStack(spacing: 4) {
-                        Text(zhEn("由", "by"))
+                    HStack(spacing: 0) {
+                        Text(Brand.creditPrefix.t)
                         BrandWordmark(size: 13)
-                        Text(zhEn("出品 · doaipm.com", "· doaipm.com"))
+                        Text(Brand.creditSuffix.t)
                     }
                     .font(.caption2).foregroundStyle(.secondary)
                 }
