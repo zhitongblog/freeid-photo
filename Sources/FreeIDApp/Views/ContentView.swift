@@ -4,6 +4,7 @@ import FreeIDCore
 struct ContentView: View {
     @State private var model = CaptureViewModel()
     @State private var showingSpecPicker = false
+    @State private var showingAbout = false
 
     var body: some View {
         NavigationStack {
@@ -11,6 +12,14 @@ struct ContentView: View {
                 .navigationTitle("FreeID Photo")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button { showingAbout = true } label: {
+                            BrandWordmark(size: 17, base: .white)
+                                .padding(.horizontal, 10).padding(.vertical, 5)
+                                .background(.black.opacity(0.45), in: Capsule())
+                        }
+                        .accessibilityLabel("doaipm")
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
                             showingSpecPicker = true
@@ -22,6 +31,9 @@ struct ContentView: View {
                 }
                 .sheet(isPresented: $showingSpecPicker) {
                     SpecPickerView(model: model, isPresented: $showingSpecPicker)
+                }
+                .sheet(isPresented: $showingAbout) {
+                    AboutView()
                 }
         }
     }

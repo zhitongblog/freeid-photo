@@ -62,6 +62,15 @@ struct ResultScreen: View {
                     }
                 }
                 .padding(.horizontal)
+
+                Link(destination: Brand.url) {
+                    HStack(spacing: 4) {
+                        Text(zhEn("由", "by"))
+                        BrandWordmark(size: 13)
+                        Text(zhEn("出品 · doaipm.com", "· doaipm.com"))
+                    }
+                    .font(.caption2).foregroundStyle(.secondary)
+                }
                 .padding(.bottom, 8)
             }
             .navigationTitle(zhEn("你的证件照", "Your photo"))
