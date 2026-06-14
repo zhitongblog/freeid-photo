@@ -1,37 +1,7 @@
 import SwiftUI
 
-/// The 8 languages doaipm.com ships in. Resolved from the device's preferred languages.
-enum BrandLang {
-    case zh, zhTW, en, ja, ko, fr, de, it
-    static var current: BrandLang {
-        for id in Locale.preferredLanguages {
-            let l = id.lowercased()
-            if l.hasPrefix("zh") {
-                return (l.contains("hant") || l.contains("-tw") || l.contains("-hk") || l.contains("-mo")) ? .zhTW : .zh
-            }
-            if l.hasPrefix("ja") { return .ja }
-            if l.hasPrefix("ko") { return .ko }
-            if l.hasPrefix("fr") { return .fr }
-            if l.hasPrefix("de") { return .de }
-            if l.hasPrefix("it") { return .it }
-            if l.hasPrefix("en") { return .en }
-        }
-        return .en
-    }
-}
-
-/// One brand string in all 8 site languages; `.t` returns the device-language variant.
-struct BrandStr {
-    let zh, zhTW, en, ja, ko, fr, de, it: String
-    var t: String {
-        switch BrandLang.current {
-        case .zh: return zh; case .zhTW: return zhTW; case .en: return en; case .ja: return ja
-        case .ko: return ko; case .fr: return fr; case .de: return de; case .it: return it
-        }
-    }
-}
-
 /// doaipm. brand assets + copy, mirrored 1:1 from the live multilingual site doaipm.com.
+/// (Shared `BrandLang` / `Loc8` live in Localization.swift.)
 enum Brand {
     static let url = URL(string: "https://doaipm.com")!
     static let xURL = URL(string: "https://x.com/zhitong45")!
@@ -39,25 +9,25 @@ enum Brand {
         colors: [Color(red: 0.36, green: 0.56, blue: 0.98), Color(red: 0.62, green: 0.40, blue: 0.96)],
         startPoint: .leading, endPoint: .trailing)
 
-    static let slogan = BrandStr(
+    static let slogan = Loc8(
         zh: "言出法随", zhTW: "言出法隨",
         en: "Speak it. AI builds it.",
         ja: "言葉にすれば、AIが作る", ko: "말하면 AI가 만든다",
         fr: "Dites-le, l'IA le construit", de: "Sag es, die KI baut es",
         it: "Dillo, l'IA lo costruisce")
-    static let subSlogan = BrandStr(
+    static let subSlogan = Loc8(
         zh: "一句话，AI 就做出来", zhTW: "一句話，AI 就做出來",
         en: "Say the word — Claude makes it real.",
         ja: "一言で、AIがそれを実現する", ko: "한 마디면 AI가 바로 만들어 줍니다",
         fr: "une phrase suffit", de: "Ein Satz — und es ist fertig",
         it: "Una frase e il risultato è già pronto")
-    static let tagline = BrandStr(
+    static let tagline = Loc8(
         zh: "成为 AI 时代的产品经理", zhTW: "成為 AI 時代的產品經理",
         en: "Becoming a PM in the AI era",
         ja: "AI 時代のプロダクトマネージャーになる", ko: "AI 시대의 제품 매니저 되기",
         fr: "Devenir PM à l'ère de l'IA", de: "Produktmanager:in im KI-Zeitalter werden",
         it: "Diventare PM nell'era dell'IA")
-    static let about = BrandStr(
+    static let about = Loc8(
         zh: "FreeID Photo 是 doaipm. 用 AI 做出来的作品之一。",
         zhTW: "FreeID Photo 是 doaipm. 用 AI 做出來的作品之一。",
         en: "FreeID Photo is one of doaipm.'s products, built with AI.",
@@ -66,24 +36,24 @@ enum Brand {
         fr: "FreeID Photo est l'un des produits de doaipm., conçu avec l'IA.",
         de: "FreeID Photo ist eines von doaipm.s mit KI gebauten Produkten.",
         it: "FreeID Photo è uno dei prodotti di doaipm., creato con l'IA.")
-    static let visit = BrandStr(
+    static let visit = Loc8(
         zh: "访问 doaipm.com", zhTW: "造訪 doaipm.com", en: "Visit doaipm.com",
         ja: "doaipm.com を見る", ko: "doaipm.com 방문", fr: "Visiter doaipm.com",
         de: "doaipm.com besuchen", it: "Visita doaipm.com")
-    static let followX = BrandStr(
+    static let followX = Loc8(
         zh: "在 X 关注 @zhitong45", zhTW: "在 X 追蹤 @zhitong45", en: "Follow @zhitong45 on X",
         ja: "X で @zhitong45 をフォロー", ko: "X에서 @zhitong45 팔로우",
         fr: "Suivre @zhitong45 sur X", de: "@zhitong45 auf X folgen", it: "Segui @zhitong45 su X")
-    static let aboutTitle = BrandStr(
+    static let aboutTitle = Loc8(
         zh: "关于", zhTW: "關於", en: "About", ja: "概要", ko: "소개",
         fr: "À propos", de: "Über", it: "Info")
-    static let done = BrandStr(
+    static let done = Loc8(
         zh: "完成", zhTW: "完成", en: "Done", ja: "完了", ko: "완료",
         fr: "Terminé", de: "Fertig", it: "Fine")
     // Result-screen footer: [prefix] doaipm. [suffix]
-    static let creditPrefix = BrandStr(
+    static let creditPrefix = Loc8(
         zh: "由 ", zhTW: "由 ", en: "by ", ja: "", ko: "", fr: "par ", de: "von ", it: "di ")
-    static let creditSuffix = BrandStr(
+    static let creditSuffix = Loc8(
         zh: " 出品 · doaipm.com", zhTW: " 出品 · doaipm.com", en: " · doaipm.com",
         ja: " 制作 · doaipm.com", ko: " 제작 · doaipm.com",
         fr: " · doaipm.com", de: " · doaipm.com", it: " · doaipm.com")

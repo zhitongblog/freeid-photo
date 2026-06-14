@@ -24,8 +24,7 @@ struct ContentView: View {
                         Button {
                             showingSpecPicker = true
                         } label: {
-                            Label(model.selectedSpec.displayName.text(forLanguage: localeCode),
-                                  systemImage: "globe")
+                            Label(SpecText.name(model.selectedSpec), systemImage: "globe")
                         }
                     }
                 }
@@ -38,12 +37,6 @@ struct ContentView: View {
         }
     }
 }
-
-/// Two-letter UI language code, used to pick the localized text in specs.
-var localeCode: String { String(Locale.preferredLanguages.first?.prefix(2) ?? "en") }
-
-/// Pick Chinese or English UI copy based on the device language.
-func zhEn(_ zh: String, _ en: String) -> String { localeCode.hasPrefix("zh") ? zh : en }
 
 extension Color {
     /// Build a SwiftUI Color from a "#RRGGBB" string (reuses the core color parser).

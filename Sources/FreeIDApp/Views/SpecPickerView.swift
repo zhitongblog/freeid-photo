@@ -11,7 +11,7 @@ struct SpecPickerView: View {
         NavigationStack {
             List {
                 ForEach(model.specsGroupedByCountry(), id: \.country) { group in
-                    Section(group.country) {
+                    Section(SpecText.country(group.country).t) {
                         ForEach(group.specs) { spec in
                             Button {
                                 model.selectedSpec = spec
@@ -23,10 +23,10 @@ struct SpecPickerView: View {
                     }
                 }
             }
-            .navigationTitle("Choose document")
+            .navigationTitle(S.chooseDoc.t)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { isPresented = false }
+                    Button(S.cancel.t) { isPresented = false }
                 }
             }
         }
@@ -35,7 +35,7 @@ struct SpecPickerView: View {
     private func row(_ spec: PhotoSpec) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(spec.displayName.text(forLanguage: localeCode))
+                Text(SpecText.name(spec))
                     .font(.body).foregroundStyle(.primary)
                 Text("\(Int(spec.outputSize.widthMM))×\(Int(spec.outputSize.heightMM))mm · "
                      + "\(spec.pixelWidth)×\(spec.pixelHeight)px")

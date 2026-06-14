@@ -23,7 +23,7 @@ struct CameraScreen: View {
                     .padding(.horizontal)
                     .padding(.bottom, 6)
                 if model.usingBackCamera {
-                    Text(zhEn("后置相机 · 让他人帮你拍", "Back camera — have someone shoot you"))
+                    Text(S.backCameraHint.t)
                         .font(.caption).foregroundStyle(.white)
                         .padding(.horizontal, 12).padding(.vertical, 5)
                         .background(.black.opacity(0.4), in: Capsule())
@@ -52,10 +52,10 @@ struct CameraScreen: View {
         .fullScreenCover(isPresented: $model.showResult) {
             ResultScreen(model: model)
         }
-        .alert("Capture failed", isPresented: .init(
+        .alert(S.captureFailedTitle.t, isPresented: .init(
             get: { model.captureError != nil },
             set: { if !$0 { model.captureError = nil } })) {
-            Button("OK", role: .cancel) {}
+            Button(S.ok.t, role: .cancel) {}
         } message: {
             Text(model.captureError ?? "")
         }
@@ -153,7 +153,6 @@ private struct CoachLine: View {
         .background(.black.opacity(0.5), in: Capsule())
     }
 
-    private var zh: Bool { localeCode.hasPrefix("zh") }
     private var color: Color { hint == .ready ? .green : .white }
     private var icon: String {
         switch hint {
@@ -166,12 +165,12 @@ private struct CoachLine: View {
     }
     private var text: String {
         switch hint {
-        case .ready:     return zh ? "很好，随时可以拍" : "Looks great — tap to shoot"
-        case .findFace:  return zh ? "把脸放进框里" : "Put your face in the outline"
-        case .onePerson: return zh ? "画面里只留一个人" : "Keep just one person in frame"
-        case .straighten:return zh ? "坐正一点，看向镜头" : "Sit straight, look at the camera"
-        case .moveCloser:return zh ? "靠近一点" : "Move a little closer"
-        case .moveBack:  return zh ? "往后退一点" : "Move back a little"
+        case .ready:     return S.coachReady.t
+        case .findFace:  return S.coachFindFace.t
+        case .onePerson: return S.coachOnePerson.t
+        case .straighten:return S.coachStraighten.t
+        case .moveCloser:return S.coachCloser.t
+        case .moveBack:  return S.coachBack.t
         }
     }
 }
@@ -186,7 +185,7 @@ private struct FlipCameraButton: View {
                 .frame(width: 52, height: 52)
                 .background(.black.opacity(0.4), in: Circle())
         }
-        .accessibilityLabel(zhEn("切换摄像头", "Switch camera"))
+        .accessibilityLabel(S.switchCamera.t)
     }
 }
 

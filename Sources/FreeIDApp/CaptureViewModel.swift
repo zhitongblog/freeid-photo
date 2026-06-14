@@ -48,12 +48,15 @@ final class CaptureViewModel {
     /// Background colors offered for GENERAL portrait photos. The white/blue/red trio is the
     /// real-world standard for China 一寸/二寸 (résumés, certificates, social security, etc.).
     struct BackgroundChoice: Identifiable, Equatable {
-        let name: LocalizedText
+        let name: String
         let hex: String
         var id: String { hex }
-        static let white = BackgroundChoice(name: .init(en: "White", zh: "白底"), hex: "#FFFFFF")
-        static let blue  = BackgroundChoice(name: .init(en: "Blue",  zh: "蓝底"), hex: "#438EDB")
-        static let red   = BackgroundChoice(name: .init(en: "Red",   zh: "红底"), hex: "#D9001B")
+        static let white = BackgroundChoice(
+            name: Loc8(zh: "白底", zhTW: "白底", en: "White", ja: "白", ko: "흰색", fr: "Blanc", de: "Weiß", it: "Bianco").t, hex: "#FFFFFF")
+        static let blue = BackgroundChoice(
+            name: Loc8(zh: "蓝底", zhTW: "藍底", en: "Blue", ja: "青", ko: "파랑", fr: "Bleu", de: "Blau", it: "Blu").t, hex: "#438EDB")
+        static let red = BackgroundChoice(
+            name: Loc8(zh: "红底", zhTW: "紅底", en: "Red", ja: "赤", ko: "빨강", fr: "Rouge", de: "Rot", it: "Rosso").t, hex: "#D9001B")
         static let all: [BackgroundChoice] = [.white, .blue, .red]
     }
 
@@ -137,9 +140,7 @@ final class CaptureViewModel {
                     self.exportedData = data
                     self.showResult = true
                 } else {
-                    self.captureError = localeCode.hasPrefix("zh")
-                        ? "没拍清楚，让脸保持在框里再试一次就好"
-                        : "Didn't catch that — keep your face in the frame and tap again."
+                    self.captureError = S.captureError.t
                 }
             }
         }

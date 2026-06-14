@@ -16,8 +16,8 @@ struct ResultScreen: View {
 
     private var spec: PhotoSpec { model.selectedSpec }
     private var imageData: Data? { model.exportedData }
-    /// The spec's required background color name, e.g. "白色" / "White".
-    private var bgName: String { spec.background.name.text(forLanguage: localeCode) }
+    /// The spec's required background color name, localized, e.g. "白色" / "white".
+    private var bgName: String { SpecText.colorName(spec.background.hex) }
 
     var body: some View {
         NavigationStack {
@@ -32,23 +32,20 @@ struct ResultScreen: View {
                         .shadow(radius: 8)
                 }
                 #endif
-                Label(zhEn("已按规格生成，可直接使用", "Ready to use — sized to spec"), systemImage: "checkmark.seal.fill")
+                Label(S.readyToUse.t, systemImage: "checkmark.seal.fill")
                     .font(.headline).foregroundStyle(.green)
-                Text("\(spec.displayName.text(forLanguage: localeCode)) · \(spec.pixelWidth)×\(spec.pixelHeight)px")
+                Text("\(SpecText.name(spec)) · \(spec.pixelWidth)×\(spec.pixelHeight)px")
                     .font(.caption).foregroundStyle(.secondary)
 
                 if model.canChooseBackground {
                     backgroundPicker
                 } else if model.backgroundLockedToSpec {
                     // Editable official doc: background was set to the REQUIRED color, not a choice.
-                    Label(zhEn("已按该证件要求使用\(bgName)背景", "Set to the required \(bgName) background"),
-                          systemImage: "checkmark.circle")
+                    Label(String(format: S.requiredBgNote.t, bgName), systemImage: "checkmark.circle")
                         .font(.caption).foregroundStyle(.secondary)
                         .multilineTextAlignment(.center).padding(.horizontal)
                 } else {
-                    Label(zhEn("该国要求原图，未替换背景，请用\(bgName)纯色背景拍摄",
-                               "This country requires an unedited photo — shoot against a real \(bgName) backdrop."),
-                          systemImage: "exclamationmark.shield")
+                    Label(String(format: S.strictBgWarning.t, bgName), systemImage: "exclamationmark.shield")
                         .font(.caption).foregroundStyle(.orange)
                         .multilineTextAlignment(.center).padding(.horizontal)
                 }
@@ -57,13 +54,13 @@ struct ResultScreen: View {
                 saveButton
                 HStack(spacing: 12) {
                     Button { dismiss() } label: {
-                        Label(zhEn("重拍", "Retake"), systemImage: "arrow.counterclockwise")
+                        Label(S.retake.t, systemImage: "arrow.counterclockwise")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
                     if let data = imageData {
                         ShareLink(item: shareURL(data)) {
-                            Label(zhEn("分享", "Share"), systemImage: "square.and.arrow.up")
+                            Label(S.share.t, systemImage: "square.and.arrow.up")
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.bordered)
@@ -81,11 +78,11 @@ struct ResultScreen: View {
                 }
                 .padding(.bottom, 8)
             }
-            .navigationTitle(zhEn("你的证件照", "Your photo"))
+            .navigationTitle(S.yourPhoto.t)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button(zhEn("完成", "Done")) { dismiss() }
+                    Button(S.done.t) { dismiss() }
                 }
             }
         }
@@ -94,7 +91,7 @@ struct ResultScreen: View {
     /// Row of background color swatches; tapping re-exports the shot in that color.
     private var backgroundPicker: some View {
         VStack(spacing: 8) {
-            Text(zhEn("背景颜色", "Background")).font(.caption).foregroundStyle(.secondary)
+            Text(S.backgroundLabel.t).font(.caption).foregroundStyle(.secondary)
             HStack(spacing: 16) {
                 ForEach(CaptureViewModel.BackgroundChoice.all) { choice in
                     let selected = model.backgroundHex == choice.hex
@@ -108,7 +105,7 @@ struct ResultScreen: View {
                             .overlay(Circle().stroke(.gray.opacity(0.4), lineWidth: 1))
                             .overlay(Circle().stroke(.tint, lineWidth: selected ? 3 : 0).padding(-3))
                     }
-                    .accessibilityLabel(choice.name.text(forLanguage: localeCode))
+                    .accessibilityLabel(choice.name)
                 }
             }
         }
@@ -128,10 +125,10 @@ struct ResultScreen: View {
 
     private var saveLabel: String {
         switch saveState {
-        case .idle: return zhEn("保存到相册", "Save to Photos")
-        case .saving: return zhEn("保存中…", "Saving…")
-        case .saved: return zhEn("已保存", "Saved")
-        case .failed: return zhEn("再试一次", "Try again")
+        case .idle: return S.saveToPhotos.t
+        case .saving: return S.saving.t
+        case .saved: return S.saved.t
+        case .failed: return S.tryAgain.t
         }
     }
 
