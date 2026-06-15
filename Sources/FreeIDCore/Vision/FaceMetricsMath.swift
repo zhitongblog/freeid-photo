@@ -68,7 +68,10 @@ public enum FaceMetricsMath {
         /// Lip-gap ratio at/below which the mouth counts as closed.
         public var mouthClosed: Double = 0.12
         /// Fraction of the face-box height added above the box to estimate the hairline/crown.
-        public var crownHairPad: Double = 0.12
+        /// Vision's face box stops near the eyebrows/forehead; the true top of the head (hair)
+        /// sits well above it, so this must be generous or the crop measures the head too short
+        /// and ends up cutting the crown / leaving no margin. Calibrated on real photos.
+        public var crownHairPad: Double = 0.25
         public init() {}
     }
 

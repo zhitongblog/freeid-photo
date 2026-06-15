@@ -58,6 +58,11 @@ enum S {
         ja: "少し下がってください", ko: "조금 뒤로", fr: "Reculez un peu",
         de: "Etwas zurücktreten", it: "Allontanati un po'")
 
+    static let includeShoulders = Loc8(
+        zh: "头和肩膀一起放进框", zhTW: "頭和肩膀一起放進框",
+        en: "Fit your head AND shoulders in", ja: "頭と肩を枠に収めて",
+        ko: "머리와 어깨를 함께 맞추세요", fr: "Cadrez la tête et les épaules",
+        de: "Kopf und Schultern einpassen", it: "Inquadra testa e spalle")
     static let backCameraHint = Loc8(zh: "后置相机 · 让他人帮你拍", zhTW: "後置相機 · 讓他人幫你拍",
         en: "Back camera — have someone shoot you", ja: "背面カメラ · 誰かに撮ってもらう",
         ko: "후면 카메라 · 다른 사람이 찍어 주세요", fr: "Caméra arrière — faites-vous photographier",

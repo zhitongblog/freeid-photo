@@ -17,6 +17,17 @@ struct CameraScreen: View {
             HeadGuide(spec: model.selectedSpec, ready: model.isLiveCompliant && model.hasFace)
                 .ignoresSafeArea()
 
+            // Reminder to step back and include shoulders — ID photos are head-and-shoulders,
+            // and a too-close selfie crops them out before the export can keep them.
+            VStack {
+                Text(S.includeShoulders.t)
+                    .font(.subheadline.weight(.medium)).foregroundStyle(.white)
+                    .padding(.horizontal, 14).padding(.vertical, 7)
+                    .background(.black.opacity(0.45), in: Capsule())
+                    .padding(.top, 8)
+                Spacer()
+            }
+
             VStack(spacing: 0) {
                 Spacer()
                 CoachLine(hint: model.liveHint)
