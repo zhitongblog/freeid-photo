@@ -96,7 +96,16 @@ private struct HeadGuide: View {
                 }
                 .fill(.black.opacity(0.5), style: FillStyle(eoFill: true))
 
-                // Head + shoulders outline.
+                // Faint head + shoulders fill so it reads instantly as a person — and makes
+                // it obvious that shoulders belong in the shot (these are head-and-shoulders
+                // photos; China passport etc. require the shoulders visible).
+                ZStack {
+                    Ellipse().frame(width: headW, height: headH).position(x: headRect.midX, y: headRect.midY)
+                    Torso(headRect: headRect, frame: frame)
+                }
+                .foregroundStyle(guideColor.opacity(ready ? 0.18 : 0.12))
+
+                // Head + shoulders dashed outline.
                 ZStack {
                     Ellipse()
                         .stroke(guideColor, style: dash)
@@ -119,22 +128,54 @@ private struct HeadGuide: View {
     private var dash: StrokeStyle { StrokeStyle(lineWidth: 3, lineCap: .round, dash: [11, 9]) }
 }
 
-/// Two shoulder curves sweeping from the neck down to the bottom corners of the frame.
+/// Geometry shared by the shoulder outline and torso fill.
+private enum Bust {
+    static func neckHalf(_ h: CGRect) -> CGFloat { h.width * 0.24 }
+    static func neckY(_ h: CGRect) -> CGFloat { h.maxY - h.height * 0.02 }
+    static func inset(_ f: CGRect) -> CGFloat { f.width * 0.05 }
+}
+
+/// Two rounded shoulder curves sweeping from the neck out to the bottom corners — a real
+/// head-and-shoulders bust, not thin lines, so "include your shoulders" reads at a glance.
 private struct Shoulders: Shape {
     let headRect: CGRect
     let frame: CGRect
     func path(in rect: CGRect) -> Path {
         var p = Path()
-        let neckY = headRect.maxY - headRect.height * 0.02
-        let bottom = frame.maxY
-        let leftNeck = CGPoint(x: headRect.midX - headRect.width * 0.30, y: neckY)
-        let rightNeck = CGPoint(x: headRect.midX + headRect.width * 0.30, y: neckY)
-        p.move(to: leftNeck)
-        p.addQuadCurve(to: CGPoint(x: frame.minX + frame.width * 0.06, y: bottom),
-                       control: CGPoint(x: headRect.midX - headRect.width * 0.95, y: bottom))
-        p.move(to: rightNeck)
-        p.addQuadCurve(to: CGPoint(x: frame.maxX - frame.width * 0.06, y: bottom),
-                       control: CGPoint(x: headRect.midX + headRect.width * 0.95, y: bottom))
+        let nh = Bust.neckHalf(headRect), ny = Bust.neckY(headRect)
+        let bottom = frame.maxY, drop = bottom - ny
+        let lx = frame.minX + Bust.inset(frame), rx = frame.maxX - Bust.inset(frame)
+        p.move(to: CGPoint(x: headRect.midX - nh, y: ny))
+        p.addCurve(to: CGPoint(x: lx, y: bottom),
+                   control1: CGPoint(x: headRect.midX - nh, y: ny + drop * 0.42),
+                   control2: CGPoint(x: lx, y: bottom - drop * 0.55))
+        p.move(to: CGPoint(x: headRect.midX + nh, y: ny))
+        p.addCurve(to: CGPoint(x: rx, y: bottom),
+                   control1: CGPoint(x: headRect.midX + nh, y: ny + drop * 0.42),
+                   control2: CGPoint(x: rx, y: bottom - drop * 0.55))
+        return p
+    }
+}
+
+/// Closed torso (shoulders + neck + bottom) for the faint silhouette fill; the cross-neck
+/// edge sits just inside the head ellipse, so it's hidden under the head fill.
+private struct Torso: Shape {
+    let headRect: CGRect
+    let frame: CGRect
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let nh = Bust.neckHalf(headRect), ny = Bust.neckY(headRect)
+        let bottom = frame.maxY, drop = bottom - ny
+        let lx = frame.minX + Bust.inset(frame), rx = frame.maxX - Bust.inset(frame)
+        p.move(to: CGPoint(x: lx, y: bottom))
+        p.addCurve(to: CGPoint(x: headRect.midX - nh, y: ny),
+                   control1: CGPoint(x: lx, y: bottom - drop * 0.55),
+                   control2: CGPoint(x: headRect.midX - nh, y: ny + drop * 0.42))
+        p.addLine(to: CGPoint(x: headRect.midX + nh, y: ny))
+        p.addCurve(to: CGPoint(x: rx, y: bottom),
+                   control1: CGPoint(x: headRect.midX + nh, y: ny + drop * 0.42),
+                   control2: CGPoint(x: rx, y: bottom - drop * 0.55))
+        p.closeSubpath()
         return p
     }
 }
