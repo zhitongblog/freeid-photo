@@ -48,11 +48,30 @@ public struct ExportPipeline: Sendable {
         if options.replaceBackground && spec.digitalEditPolicy == .strict {
             throw ExportError.backgroundForbidden
         }
+        let targetW = spec.pixelWidth, targetH = spec.pixelHeight
 
-        // 1. Crop to the spec's framing.
+        // Background-replaced path: replace the background on the WHOLE source, then place it on
+        // a color canvas using the IDEAL (unclamped) crop. Areas the source doesn't cover are
+        // filled with the same background color — that's what gives proper top/bottom/side
+        // whitespace even when the source is a tight headshot.
+        if options.replaceBackground {
+            let hex = options.backgroundHex ?? spec.background.hex
+            let replaced = try replaceBackground(of: cg, with: hex)
+            guard let baseCG = context.createCGImage(replaced, from: replaced.extent) else {
+                throw ExportError.renderFailed
+            }
+            let rect = ExportGeometry.idealCropRect(
+                imageWidth: cg.width, imageHeight: cg.height, spec: spec, metrics: metrics)
+            guard let out = compose(baseCG, crop: rect, targetW: targetW, targetH: targetH, hex: hex) else {
+                throw ExportError.renderFailed
+            }
+            return out
+        }
+
+        // Strict path (no editing): crop clamped to the source, resize only. No padding —
+        // we can't fabricate background where the real photo didn't reach.
         let rect = ExportGeometry.cropRect(
             imageWidth: cg.width, imageHeight: cg.height, spec: spec, metrics: metrics)
-        // CIImage origin is bottom-left; convert the top-left crop rect.
         let ci = CIImage(cgImage: cg)
         let ciCrop = CGRect(
             x: rect.x, y: Double(cg.height) - rect.y - rect.height,
@@ -60,22 +79,36 @@ public struct ExportPipeline: Sendable {
         var working = ci.cropped(to: ciCrop)
         working = working.transformed(by: CGAffineTransform(
             translationX: -working.extent.origin.x, y: -working.extent.origin.y))
-
-        // 2. Optional background replacement (user-chosen color, else the spec's default).
-        if options.replaceBackground, let baseCG = render(working) {
-            working = try replaceBackground(of: baseCG, with: options.backgroundHex ?? spec.background.hex)
-        }
-
-        // 3. Resize to exact spec pixels.
-        let targetW = Double(spec.pixelWidth), targetH = Double(spec.pixelHeight)
-        let sx = targetW / working.extent.width, sy = targetH / working.extent.height
+        let sx = Double(targetW) / working.extent.width, sy = Double(targetH) / working.extent.height
         working = working.transformed(by: CGAffineTransform(scaleX: sx, y: sy))
-
         guard let out = context.createCGImage(
-            working, from: CGRect(x: 0, y: 0, width: targetW, height: targetH)) else {
+            working, from: CGRect(x: 0, y: 0, width: Double(targetW), height: Double(targetH))) else {
             throw ExportError.renderFailed
         }
         return out
+    }
+
+    /// Draw `src` onto a `hex`-filled `targetW×targetH` canvas so the (possibly out-of-bounds)
+    /// crop rect maps to the full output; uncovered areas stay the background color.
+    private func compose(_ src: CGImage, crop rect: ExportGeometry.PixelRect,
+                         targetW: Int, targetH: Int, hex: String) -> CGImage? {
+        let scale = Double(targetW) / rect.width
+        let W = Double(src.width), H = Double(src.height)
+        let cs = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(data: nil, width: targetW, height: targetH, bitsPerComponent: 8,
+                                  bytesPerRow: 0, space: cs,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        let rgb = ColorMath.rgb(fromHex: hex) ?? .init(r: 1, g: 1, b: 1)
+        ctx.setFillColor(CGColor(red: rgb.r, green: rgb.g, blue: rgb.b, alpha: 1))
+        ctx.fill(CGRect(x: 0, y: 0, width: targetW, height: targetH))
+        // CGContext is bottom-left; rect is top-left. Place the whole source scaled so the crop
+        // window lands on the output: crop bottom-left = (rect.x, H - rect.y - rect.height).
+        let drawRect = CGRect(x: -rect.x * scale,
+                              y: -(H - rect.y - rect.height) * scale,
+                              width: W * scale, height: H * scale)
+        ctx.interpolationQuality = .high
+        ctx.draw(src, in: drawRect)
+        return ctx.makeImage()
     }
 
     /// Composite the foreground person over a solid background color using person

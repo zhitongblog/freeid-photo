@@ -24,7 +24,12 @@ public enum ExportGeometry {
     ) -> PixelRect {
         let srcW = Double(imageWidth), srcH = Double(imageHeight)
 
-        let targetHeadFrac = spec.headHeight.mid / spec.outputSize.heightMM
+        // Bias the head toward the SMALLER end of the allowed range so the photo keeps
+        // comfortable whitespace on all sides (top/bottom/left/right) while staying in spec.
+        // headBias 0 = smallest allowed head (max margin), 1 = largest (min margin).
+        let headBias = 0.15
+        let targetHeadMM = spec.headHeight.min + headBias * (spec.headHeight.max - spec.headHeight.min)
+        let targetHeadFrac = targetHeadMM / spec.outputSize.heightMM
         let targetEyeFromBottomFrac = spec.eyeLineFromBottom.mid / spec.outputSize.heightMM
         let eyeFromTopFrac = 1.0 - targetEyeFromBottomFrac
 
@@ -46,6 +51,28 @@ public enum ExportGeometry {
         left = min(max(0, left), srcW - cropW)
         top = min(max(0, top), srcH - cropH)
 
+        return PixelRect(x: left, y: top, width: cropW, height: cropH)
+    }
+
+    /// The IDEAL crop for the target head size — NOT clamped to the source. When the source is
+    /// too small to contain it (a tight headshot), the rect extends past the image edges; the
+    /// export then pads those areas with the background color (only safe when the background is
+    /// being replaced). This is what lets a photo have real top/bottom/side whitespace even
+    /// from a tightly-cropped source. Same head/eye/centre math as `cropRect`, no clamping.
+    public static func idealCropRect(
+        imageWidth: Int, imageHeight: Int, spec: PhotoSpec, metrics: FaceMetrics
+    ) -> PixelRect {
+        let srcW = Double(imageWidth), srcH = Double(imageHeight)
+        let headBias = 0.15
+        let targetHeadMM = spec.headHeight.min + headBias * (spec.headHeight.max - spec.headHeight.min)
+        let targetHeadFrac = targetHeadMM / spec.outputSize.heightMM
+        let eyeFromTopFrac = 1.0 - spec.eyeLineFromBottom.mid / spec.outputSize.heightMM
+
+        let headPx = max(1.0, (metrics.chinY - metrics.crownY) * srcH)
+        let cropH = headPx / targetHeadFrac
+        let cropW = cropH * spec.aspectRatio
+        let left = metrics.faceCenterX * srcW - cropW / 2
+        let top = metrics.eyeLineY * srcH - eyeFromTopFrac * cropH
         return PixelRect(x: left, y: top, width: cropW, height: cropH)
     }
 

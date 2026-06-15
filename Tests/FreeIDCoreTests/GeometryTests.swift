@@ -80,9 +80,9 @@ final class ExportGeometryTests: XCTestCase {
             glassesDetected: false, glareOnGlasses: false, brightness: 0.6)
         let rect = ExportGeometry.cropRect(imageWidth: 2000, imageHeight: 2000, spec: s, metrics: m)
 
-        // head = 0.30 * 2000 = 600px; targetHeadFrac = 30.15/51 ≈ 0.591
-        // cropH ≈ 600 / 0.591 ≈ 1015px
-        let targetHeadFrac = s.headHeight.mid / s.outputSize.heightMM
+        // head = 0.30 * 2000 = 600px; crop sized so the head lands at the margin-biased target.
+        let targetHeadMM = s.headHeight.min + 0.15 * (s.headHeight.max - s.headHeight.min)
+        let targetHeadFrac = targetHeadMM / s.outputSize.heightMM
         XCTAssertEqual(rect.height, 600.0 / targetHeadFrac, accuracy: 1.0)
         // Square spec → crop width ≈ height.
         XCTAssertEqual(rect.width, rect.height, accuracy: 1.0)
@@ -156,7 +156,8 @@ final class ReprojectionTests: XCTestCase {
     func testUnclampedReprojectionLandsOnTarget() throws {
         let s = try spec()
         let framed = ExportGeometry.reprojected(smallCenteredFace(), spec: s)
-        let targetHeadFrac = s.headHeight.mid / s.outputSize.heightMM
+        let targetHeadMM = s.headHeight.min + 0.15 * (s.headHeight.max - s.headHeight.min)
+        let targetHeadFrac = targetHeadMM / s.outputSize.heightMM
         let targetEyeFromBottom = s.eyeLineFromBottom.mid / s.outputSize.heightMM
         XCTAssertEqual(framed.headFraction, targetHeadFrac, accuracy: 0.005)
         XCTAssertEqual(framed.eyeFromBottomFraction, targetEyeFromBottom, accuracy: 0.005)
