@@ -3,6 +3,7 @@ import FreeIDCore
 #if canImport(ImageIO)
 import ImageIO
 import CoreGraphics
+import CoreImage
 import UniformTypeIdentifiers
 #endif
 
@@ -179,6 +180,52 @@ case "export":
         try data.write(to: URL(fileURLWithPath: outPath))
         print("wrote \(out.width)x\(out.height)px → \(outPath)")
     } catch { fail("export failed: \(error)") }
+
+case "bgreplace":
+    // Replace the background only — keep the original framing/size, no crop to a spec.
+    guard args.count > 1 else { fail("usage: freeidctl bgreplace <image> --out <path> [--bg #RRGGBB]") }
+    let path = args[1]
+    guard let outPath = option("out") else { fail("missing --out <path>") }
+    let hex = option("bg") ?? "#FFFFFF"
+    let cg = loadCGImage(path)
+    let pipeline = ExportPipeline()
+    do {
+        let ci = try pipeline.replaceBackground(of: cg, with: hex)
+        guard let out = CIContext().createCGImage(ci, from: ci.extent) else { fail("render failed") }
+        let data = (outPath as NSString).pathExtension.lowercased() == "png"
+            ? try pipeline.pngData(out) : try pipeline.jpegData(out)
+        try data.write(to: URL(fileURLWithPath: outPath))
+        print("wrote \(out.width)x\(out.height)px → \(outPath)")
+    } catch { fail("bgreplace failed: \(error)") }
+
+case "customexport":
+    // Export to an arbitrary physical size (mm) with ID-photo head framing + optional bg.
+    //   freeidctl customexport <image> --mm 40x60 --out <path> [--bg #RRGGBB]
+    guard args.count > 1 else { fail("usage: freeidctl customexport <image> --mm 40x60 --out <path> [--bg #RRGGBB]") }
+    let path = args[1]
+    guard let outPath = option("out") else { fail("missing --out <path>") }
+    let dims = (option("mm") ?? "40x60").lowercased().replacingOccurrences(of: "*", with: "x").split(separator: "x")
+    guard dims.count == 2, let w = Double(dims[0]), let h = Double(dims[1]), w > 0, h > 0 else { fail("bad --mm (use e.g. 40x60)") }
+    let bg = option("bg")
+    let cg = loadCGImage(path)
+    let metrics: FaceMetrics
+    do { metrics = try VisionComplianceEngine().metrics(from: cg) } catch { fail("vision analysis failed: \(error)") }
+    if metrics.faceCount != 1 { fail("expected exactly one face, found \(metrics.faceCount)") }
+    let spec = PhotoSpec(
+        id: "custom-\(Int(w))x\(Int(h))", country: "", docType: .general,
+        displayName: LocalizedText(en: "\(Int(w))x\(Int(h))mm", zh: "\(Int(w))x\(Int(h))mm"),
+        outputSize: PhysicalSize(widthMM: w, heightMM: h), dpi: 300,
+        headHeight: RangeMM(min: h * 0.58, max: h * 0.69), eyeLineFromBottom: RangeMM(min: h * 0.55, max: h * 0.62),
+        background: BackgroundRule(name: LocalizedText(en: "White", zh: "白色"), hex: bg ?? "#FFFFFF", toleranceDeltaE: 12, minUniformity: 0.85),
+        digitalEditPolicy: .allowed, expression: ExpressionRule(neutral: true, mouthClosed: true, eyesOpen: true),
+        glasses: .allowedNoGlare, fileSpec: nil, officialSourceURL: "", lastVerified: "")
+    let pipeline2 = ExportPipeline()
+    do {
+        let out = try pipeline2.export(image: cg, spec: spec, metrics: metrics, options: .init(replaceBackground: bg != nil, backgroundHex: bg))
+        let data = (outPath as NSString).pathExtension.lowercased() == "png" ? try pipeline2.pngData(out) : try pipeline2.jpegData(out)
+        try data.write(to: URL(fileURLWithPath: outPath))
+        print("wrote \(out.width)x\(out.height)px (\(Int(w))x\(Int(h))mm @300dpi) → \(outPath)")
+    } catch { fail("customexport failed: \(error)") }
 
 #endif
 case "spec-template":
