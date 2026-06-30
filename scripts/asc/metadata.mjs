@@ -63,9 +63,12 @@ export const appFields = {
 };
 
 // App Review contact (Apple uses it only if they need to reach you during review).
+// Kept out of source (public repo) — set ASC_CONTACT_* in your env before a release.
 export const reviewContact = {
-  contactFirstName: 'Xiangdong', contactLastName: 'Li',
-  contactPhone: '', contactEmail: 'lixd220@gmail.com',
+  contactFirstName: process.env.ASC_CONTACT_FIRST || 'Xiangdong',
+  contactLastName:  process.env.ASC_CONTACT_LAST  || 'Li',
+  contactPhone:     process.env.ASC_CONTACT_PHONE || '',
+  contactEmail:     process.env.ASC_CONTACT_EMAIL || '',
   demoAccountRequired: false,
 };
 

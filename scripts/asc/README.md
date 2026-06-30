@@ -48,6 +48,9 @@ node scripts/asc/release.mjs 1.1 14 --no-submit
 - ASC API key `.p8` at `~/.appstoreconnect/private_keys/AuthKey_H85Q4NJPVD.p8`
   (key id `H85Q4NJPVD`, issuer `21dd1b35-…`, the "FreeID Photo CI" Admin key). The key is
   **never** committed. Override via `ASC_KEY_ID` / `ASC_ISSUER` / `ASC_APP_ID` / `ASC_KEY_PATH`.
+- **App Review contact** (kept out of this public repo): export `ASC_CONTACT_PHONE` and
+  `ASC_CONTACT_EMAIL` (and optionally `ASC_CONTACT_FIRST` / `ASC_CONTACT_LAST`) before a
+  release so Apple can reach you during review.
 - `xcodegen`, Xcode (signing team `6NQM3XP5RF`), Node ≥ 18.
 
 ## One-time setup (already done — carries across versions, NOT re-run by the script)
