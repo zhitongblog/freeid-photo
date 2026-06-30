@@ -73,10 +73,10 @@ struct Shot<Content:View>:View{
 
 @MainActor func snap<X:View>(_ v:X,_ p:String){let r=ImageRenderer(content:v);r.scale=2;if let i=r.nsImage,let t=i.tiffRepresentation,let b=NSBitmapImageRep(data:t),let png=b.representation(using:.png,properties:[:]){try? png.write(to:URL(fileURLWithPath:p));print("wrote",p)}}
 MainActor.assumeIsolated{
-  snap(Shot("真正免费的\n证件照","对准头肩 · 一拍即合规"){GuideContent()},"/tmp/ss_zh_1.png")
+  snap(Shot("精准取景\n合规证件照","对准头肩 · 一拍即合规"){GuideContent()},"/tmp/ss_zh_1.png")
   snap(Shot("一键换底色","白 / 蓝 / 红 · 符合各国标准"){ColorsContent()},"/tmp/ss_zh_2.png")
   snap(Shot("10 国 · 16 种规格","全程本地处理 · 不上传"){SpecsContent()},"/tmp/ss_zh_3.png")
-  snap(Shot("Truly free\nID photos","Line up · shoot · compliant"){GuideContent()},"/tmp/ss_en_1.png")
+  snap(Shot("Framed right,\nevery time","Line up · shoot · compliant"){GuideContent()},"/tmp/ss_en_1.png")
   snap(Shot("Swap the\nbackground","White / Blue / Red · per spec"){ColorsContent()},"/tmp/ss_en_2.png")
   snap(Shot("10 countries\n16 specs","All on-device · nothing uploaded"){SpecsContent()},"/tmp/ss_en_3.png")
 }

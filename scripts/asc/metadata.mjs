@@ -3,16 +3,17 @@
 // App Store locale codes: en-US, zh-Hans, zh-Hant, ja, ko, fr-FR, de-DE, it.
 
 // App-level info localizations: name + subtitle + privacy policy URL (per locale).
-// Subtitle ≤ 30 chars. Lifted from the doaipm.com brand ("truly free").
+// Subtitle ≤ 30 chars. No price references (guideline 2.3.7): describe what the
+// app does, never that it's free/discounted — that lives only in the description.
 export const appInfoLocalizations = {
-  'en-US':   { name: 'FreeID Photo', subtitle: 'Truly free passport photos', privacyPolicyUrl: 'https://doaipm.com/privacy' },
-  'zh-Hans': { name: 'FreeID Photo', subtitle: '真正免费的证件照拍摄',       privacyPolicyUrl: 'https://doaipm.com/privacy' },
-  'zh-Hant': { name: 'FreeID Photo', subtitle: '真正免費的證件照拍攝',       privacyPolicyUrl: 'https://doaipm.com/privacy' },
-  'ja':      { name: 'FreeID Photo', subtitle: '本当に無料の証明写真',       privacyPolicyUrl: 'https://doaipm.com/privacy' },
-  'ko':      { name: 'FreeID Photo', subtitle: '진짜 무료 증명사진',          privacyPolicyUrl: 'https://doaipm.com/privacy' },
-  'fr-FR':   { name: 'FreeID Photo', subtitle: "Photos d'identité gratuites", privacyPolicyUrl: 'https://doaipm.com/privacy' },
-  'de-DE':   { name: 'FreeID Photo', subtitle: 'Wirklich kostenlose Passfotos', privacyPolicyUrl: 'https://doaipm.com/privacy' },
-  'it':      { name: 'FreeID Photo', subtitle: 'Foto tessera davvero gratis', privacyPolicyUrl: 'https://doaipm.com/privacy' },
+  'en-US':   { name: 'FreeID Photo', subtitle: 'On-device ID photo maker',     privacyPolicyUrl: 'https://doaipm.com/privacy' },
+  'zh-Hans': { name: 'FreeID Photo', subtitle: '本地处理的合规证件照',          privacyPolicyUrl: 'https://doaipm.com/privacy' },
+  'zh-Hant': { name: 'FreeID Photo', subtitle: '本地處理的合規證件照',          privacyPolicyUrl: 'https://doaipm.com/privacy' },
+  'ja':      { name: 'FreeID Photo', subtitle: '端末内で作る証明写真',          privacyPolicyUrl: 'https://doaipm.com/privacy' },
+  'ko':      { name: 'FreeID Photo', subtitle: '기기 내 처리 증명사진',          privacyPolicyUrl: 'https://doaipm.com/privacy' },
+  'fr-FR':   { name: 'FreeID Photo', subtitle: "Photos d'identité hors ligne", privacyPolicyUrl: 'https://doaipm.com/privacy' },
+  'de-DE':   { name: 'FreeID Photo', subtitle: 'Passfotos lokal erstellt',     privacyPolicyUrl: 'https://doaipm.com/privacy' },
+  'it':      { name: 'FreeID Photo', subtitle: 'Foto tessera sul dispositivo', privacyPolicyUrl: 'https://doaipm.com/privacy' },
 };
 
 // Version localizations: description, keywords (≤100 chars), promo, support/marketing URL,
@@ -20,7 +21,7 @@ export const appInfoLocalizations = {
 // Add the other 6 locales here when you have translated descriptions.
 export const versionLocalizations = {
   'en-US': {
-    description: `FreeID Photo makes a compliant passport or ID photo on your iPhone in seconds — completely free. No watermark, no subscription, no account.
+    description: `FreeID Photo makes a compliant passport or ID photo on your iPhone in seconds — no watermark, no account, nothing to upload.
 
 • 16 specs across 10 countries/regions (US, China, UK, Schengen, Japan, Korea, India, Singapore, and more) — each matched to the official size and head/eye requirements.
 • A head-and-shoulders guide lines you up; tap when you're framed.
@@ -29,14 +30,14 @@ export const versionLocalizations = {
 • Front or back camera — let someone shoot you with the sharper rear lens.
 • Save to Photos or share.
 
-Everything runs on-device. Nothing is uploaded. Truly free.`,
-    keywords: 'passport photo,id photo,visa photo,headshot,free,background,document,1 inch,2 inch,ID picture',
-    promotionalText: 'Truly free passport & ID photos — on-device, no watermark, no subscription.',
+Everything runs on-device. Nothing is uploaded.`,
+    keywords: 'passport photo,id photo,visa photo,headshot,background,document,1 inch,2 inch,ID picture,compliant',
+    promotionalText: 'Compliant passport & ID photos — made on-device, nothing uploaded, no watermark.',
     whatsNew: 'Bug fixes and improvements.',
     supportUrl: 'https://doaipm.com', marketingUrl: 'https://doaipm.com',
   },
   'zh-Hans': {
-    description: `FreeID Photo 在 iPhone 上几秒做好一张合规的证件照 / 护照照片 —— 真正免费,无水印、无订阅、无需注册。
+    description: `FreeID Photo 在 iPhone 上几秒做好一张合规的证件照 / 护照照片 —— 无水印、无需注册、无需上传。
 
 • 覆盖 10 个国家/地区共 16 种规格(美国、中国、英国、申根、日本、韩国、印度、新加坡等),每种都对应官方尺寸与头部/眼睛位置要求。
 • 头肩取景引导帮你对齐,框好即可拍。
@@ -45,9 +46,9 @@ Everything runs on-device. Nothing is uploaded. Truly free.`,
 • 前置/后置摄像头自由切换,可让他人用后置帮你拍得更清晰。
 • 保存到相册或分享。
 
-全部本地处理,不上传任何数据。真正免费。`,
-    keywords: '证件照,护照照片,签证照片,一寸照,二寸照,免费证件照,换背景,白底,蓝底,红底,身份证照片',
-    promotionalText: '真正免费的证件照 —— 本地处理、无水印、无订阅。',
+全部本地处理,不上传任何数据。`,
+    keywords: '证件照,护照照片,签证照片,一寸照,二寸照,合规证件照,换背景,白底,蓝底,红底,身份证照片',
+    promotionalText: '合规证件照 —— 本地处理、不上传、无水印。',
     whatsNew: '问题修复与体验优化。',
     supportUrl: 'https://doaipm.com', marketingUrl: 'https://doaipm.com',
   },
