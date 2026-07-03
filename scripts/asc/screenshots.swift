@@ -1,6 +1,10 @@
 import SwiftUI
 import AppKit
 
+// Source photos live next to this script in ./assets (an AI-generated synthetic face + its
+// white/blue/red background variants made via `freeidctl bgreplace`). No real person is used.
+let ASSETS = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("assets").path
+
 let brand = LinearGradient(colors:[Color(red:0.36,green:0.56,blue:0.98),Color(red:0.62,green:0.40,blue:0.96)],startPoint:.leading,endPoint:.trailing)
 let bg = LinearGradient(colors:[Color(red:0.93,green:0.95,blue:1.0),Color(red:0.90,green:0.92,blue:0.99)],startPoint:.top,endPoint:.bottom)
 
@@ -20,7 +24,7 @@ struct GuideContent:View{ var body:some View{
     let hr=CGRect(x:fr.midX-hw/2,y:hcy-hh/2,width:hw,height:hh)
     let dash=StrokeStyle(lineWidth:4,lineCap:.round,lineJoin:.round,dash:[14,11])
     ZStack{
-      Image(nsImage:NSImage(contentsOfFile:"/tmp/face2.jpg")!).resizable().scaledToFill().frame(width:geo.size.width,height:geo.size.height).clipped()
+      Image(nsImage:NSImage(contentsOfFile:ASSETS+"/face2.jpg")!).resizable().scaledToFill().frame(width:geo.size.width,height:geo.size.height).clipped()
       Path{p in p.addRect(CGRect(origin:.zero,size:geo.size));p.addRoundedRect(in:fr,cornerSize:CGSize(width:20,height:20))}.fill(.black.opacity(0.45),style:FillStyle(eoFill:true))
       Ellipse().stroke(.white.opacity(0.95),style:dash).frame(width:hw,height:hh).position(x:hr.midX,y:hr.midY)
       Shoulders(hr:hr,f:fr).stroke(.white.opacity(0.95),style:dash)
@@ -32,7 +36,7 @@ struct GuideContent:View{ var body:some View{
 struct ColorsContent:View{ var body:some View{
   VStack(spacing:22){
     HStack(spacing:14){
-      ForEach(["/tmp/out_cn.jpg","/tmp/bg_blue.jpg","/tmp/bg_red.jpg"],id:\.self){f in
+      ForEach([ASSETS+"/out_cn.jpg",ASSETS+"/bg_blue.jpg",ASSETS+"/bg_red.jpg"],id:\.self){f in
         Image(nsImage:NSImage(contentsOfFile:f)!).resizable().scaledToFit().frame(width:150).clipShape(RoundedRectangle(cornerRadius:10)).shadow(radius:6)
       }
     }
