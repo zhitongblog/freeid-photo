@@ -47,6 +47,9 @@ swift build
 .build/debug/freeidctl specs show us-passport
 .build/debug/freeidctl spec-template > photo.json          # blank FaceMetrics to fill
 .build/debug/freeidctl validate photo.json --spec us-passport --lang zh
+.build/debug/freeidctl measure face.jpg                    # FaceMetrics measured from a real image
+.build/debug/freeidctl export face.jpg --spec cn-1inch --replace-bg --out out.jpg
+.build/debug/freeidctl export face.jpg --spec cn-1inch --out sheet.jpg --sheet --paper 4x6
 ```
 
 `validate` exits 0 if compliant, 1 if not — usable as a CI gate.
@@ -94,6 +97,9 @@ swift build
 .build/debug/freeid-mcp --allow-write   # tools: list_specs, get_spec, validate_photo, export_photo
 ```
 
+`export_photo` takes an optional `paper` (`4x6` / `5x7` / `a4`) to tile copies onto a print
+sheet instead of writing a single photo.
+
 ## The iOS app
 
 Generated from `project.yml` with [xcodegen](https://github.com/yonaskolb/XcodeGen)
@@ -105,8 +111,24 @@ xcodebuild -project FreeIDPhoto.xcodeproj -scheme FreeIDPhoto \
   -destination 'platform=iOS Simulator,name=iPhone 17' build
 ```
 
-The app shows a live viewfinder with a guide frame and the compliance HUD; the shutter
-unlocks only when every check for the selected spec is green.
+The app shows a live viewfinder with a guide frame and a one-line coach. You can also pick a
+photo you already have from the library — the same pipeline runs on it, and anything the crop
+can't fix (pose, eyes, glasses, an unusable background on a strict spec) is listed on the
+result screen before you submit. Finished photos can be tiled onto a 4×6″ / 5×7″ / A4 print
+sheet with cut guides, stamped with the spec's DPI so a lab prints them at true size.
+
+**Debug harness.** Vision is unavailable in the iOS Simulator (`E5RT is not supported`), so
+DEBUG builds accept launch arguments that drive the import path without it:
+
+```bash
+freeidctl measure face.jpg > metrics.json   # capture real measurements on macOS
+xcrun simctl launch <device> com.freeidphoto.app \
+  -import-photo <path/to/face.jpg> -metrics <path/to/metrics.json> \
+  -spec us-passport -show-print-sheet
+```
+
+Diagnostics land in `Documents/harness.log` inside the app container. None of this is
+compiled into a Release build.
 
 ## Status
 
@@ -115,6 +137,8 @@ unlocks only when every check for the selected spec is green.
 - [x] VisionComplianceEngine: FaceMetrics from a real image (face landmarks + segmentation)
 - [x] ExportPipeline: crop / align / background replace / size normalization / print sheet
 - [x] FreeIDApp: SwiftUI live-compliance viewfinder + spec picker (builds & runs on Simulator)
-- [x] freeid-mcp: MCP server (list/get/validate/export)
+- [x] freeid-mcp: MCP server (list/get/validate/export, single photo or print sheet)
+- [x] Photo-library import: use a photo you already have, with an honest post-hoc verdict
+- [x] Print sheets: 4×6″ / 5×7″ / A4, centred with cut guides, DPI stamped into the file
 - [x] 16 specs across 10 countries, dimensions verified against official sources
 - [ ] On-device tuning: crown/hairline calibration, glasses/glare detection, live capture (/ios-qa)

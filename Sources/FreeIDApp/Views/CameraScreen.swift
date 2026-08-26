@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 import FreeIDCore
 
 /// The capture screen: live camera, a head-and-shoulders silhouette guide sized to the
@@ -8,6 +9,8 @@ import FreeIDCore
 struct CameraScreen: View {
     @Bindable var model: CaptureViewModel
     @Binding var showingSpecPicker: Bool
+    /// The photo picked from the library, if the user went that route instead of shooting.
+    @State private var pickedItem: PhotosPickerItem?
 
     var body: some View {
         ZStack {
@@ -45,6 +48,13 @@ struct CameraScreen: View {
                         model.capture()
                     }
                     HStack {
+                        // Not everyone can be shot live — a baby won't hold a pose, and plenty
+                        // of people already have the photo they want to use.
+                        PhotosPicker(selection: $pickedItem, matching: .images,
+                                     photoLibrary: .shared()) {
+                            LibraryButtonLabel()
+                        }
+                        .padding(.leading, 36)
                         Spacer()
                         FlipCameraButton { model.flipCamera() }
                             .padding(.trailing, 36)
@@ -53,9 +63,27 @@ struct CameraScreen: View {
                 .padding(.bottom, 24)
             }
 
-            if model.isCapturing {
+            if model.isCapturing || model.isImporting {
                 Color.black.opacity(0.4).ignoresSafeArea()
-                ProgressView().tint(.white).scaleEffect(1.5)
+                VStack(spacing: 12) {
+                    ProgressView().tint(.white).scaleEffect(1.5)
+                    if model.isImporting {
+                        Text(S.importing.t).font(.subheadline).foregroundStyle(.white)
+                    }
+                }
+            }
+        }
+        .onChange(of: pickedItem) { _, item in
+            guard let item else { return }
+            Task {
+                // Load the original bytes (not a UIImage) so the EXIF orientation tag survives
+                // to ImageLoading — a re-encoded UIImage would arrive stripped and sideways.
+                if let data = try? await item.loadTransferable(type: Data.self) {
+                    model.importPhoto(data)
+                } else {
+                    model.captureError = S.importUnreadable.t
+                }
+                pickedItem = nil
             }
         }
         .onAppear { model.camera.start() }
@@ -228,6 +256,18 @@ private struct CoachLine: View {
 }
 
 /// Flip between the selfie camera and the back camera (so a friend can take the photo).
+/// The photo-library affordance next to the shutter. Mirrors `FlipCameraButton`'s weight so
+/// neither reads as the primary action — the shutter still is.
+private struct LibraryButtonLabel: View {
+    var body: some View {
+        Image(systemName: "photo.on.rectangle")
+            .font(.title2).foregroundStyle(.white)
+            .frame(width: 44, height: 44)
+            .background(.black.opacity(0.45), in: Circle())
+            .accessibilityLabel(S.choosePhoto.t)
+    }
+}
+
 private struct FlipCameraButton: View {
     let action: () -> Void
     var body: some View {

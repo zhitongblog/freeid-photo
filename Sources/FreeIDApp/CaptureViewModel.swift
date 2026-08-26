@@ -26,6 +26,21 @@ final class CaptureViewModel {
     /// Set when a capture failed (e.g. no single face found at the moment of capture).
     var captureError: String?
 
+    /// Where the photo on the result screen came from. The two sources hold their own copy
+    /// of the original frame, so re-exports (background color, print sheet) must be routed
+    /// back to whichever one produced the current result.
+    enum ResultSource { case camera, library }
+    private(set) var resultSource: ResultSource = .camera
+
+    /// For a photo picked from the library there is no live viewfinder to coach through the
+    /// problems, so the verdict is reported once, after the fact, on the result screen.
+    /// Nil for camera captures (they were coached live).
+    var importReport: ComplianceReport?
+    /// True while a picked photo is being decoded and exported.
+    var isImporting = false
+
+    let importer = PhotoImporter()
+
     /// Chosen background color (#RRGGBB). Applied on edit-allowed specs; ignored on strict
     /// ones (which forbid background replacement). Defaults to white.
     var backgroundHex: String = BackgroundChoice.white.hex
@@ -78,8 +93,144 @@ final class CaptureViewModel {
     func chooseBackground(_ hex: String) {
         backgroundHex = hex
         guard canChooseBackground, exportedData != nil else { return }
-        camera.reexport(backgroundHex: hex) { data in
+        let apply: @Sendable (Data?) -> Void = { data in
             Task { @MainActor [weak self] in if let data { self?.exportedData = data } }
+        }
+        switch resultSource {
+        case .camera:  camera.reexport(backgroundHex: hex, completion: apply)
+        case .library: importer.reexport(backgroundHex: hex, completion: apply)
+        }
+    }
+
+    /// Build a print sheet — copies of the finished photo tiled onto `paper` — from whichever
+    /// source produced the current result. Hands back JPEG bytes to save or share.
+    func makePrintSheet(paper: ExportPipeline.PrintPaper,
+                        completion: @escaping @Sendable (Data?) -> Void) {
+        let hex = canChooseBackground ? backgroundHex : nil
+        switch resultSource {
+        case .camera:  camera.printSheet(paper: paper, backgroundHex: hex, completion: completion)
+        case .library: importer.printSheet(paper: paper, backgroundHex: hex, completion: completion)
+        }
+    }
+
+    /// How many copies `paper` fits for the selected spec — shown on the picker so the user
+    /// can choose the paper that gives them the most prints.
+    func copies(on paper: ExportPipeline.PrintPaper) -> Int {
+        ExportPipeline().copiesPerSheet(spec: selectedSpec, paper: paper)
+    }
+
+    /// Run a photo from the user's library through the same pipeline as a live capture.
+    /// This is the path for photos that can't be shot in the viewfinder — a baby who won't
+    /// hold still, a shot someone else already took.
+    func importPhoto(_ fileData: Data, metricsOverride: FaceMetrics? = nil) {
+        guard !isImporting else { return }
+        isImporting = true
+        captureError = nil
+        importer.load(fileData, spec: selectedSpec,
+                      backgroundHex: canChooseBackground ? backgroundHex : nil,
+                      metricsOverride: metricsOverride) { result in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.isImporting = false
+                switch result {
+                case .success(let outcome):
+                    self.resultSource = .library
+                    self.exportedData = outcome.data
+                    // Only report what the user has to act on. Framing, background and exposure
+                    // on edit-allowed specs are fixed by the export, so flagging them would be
+                    // scolding the user for something we already handled.
+                    self.importReport = outcome.report
+                    self.showResult = true
+                case .failure(let error):
+                    #if DEBUG
+                    Self.breadcrumb("import failed: \(error) (\(fileData.count) bytes)")
+                    #endif
+                    self.captureError = Self.message(for: error)
+                }
+            }
+        }
+    }
+
+    #if DEBUG
+    /// Test hook: `-import-photo <path> [-spec <id>]` runs the library-import flow on a file
+    /// instead of a picked photo, so the whole path can be driven from a script or the
+    /// Simulator (where `simctl addmedia` is unreliable). DEBUG only — never in a release build.
+    func runImportLaunchHookIfRequested() {
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: "-import-photo"), i + 1 < args.count else { return }
+        if let j = args.firstIndex(of: "-spec"), j + 1 < args.count,
+           let spec = library.spec(id: args[j + 1]) {
+            selectedSpec = spec
+        }
+        let path = args[i + 1]
+        guard let data = FileManager.default.contents(atPath: path) else {
+            Self.breadcrumb("cannot read \(path)")
+            captureError = S.importUnreadable.t
+            return
+        }
+        // Optional pre-measured FaceMetrics (from `freeidctl measure`), for running where
+        // Vision is unavailable.
+        var override: FaceMetrics?
+        if let m = args.firstIndex(of: "-metrics"), m + 1 < args.count,
+           let raw = FileManager.default.contents(atPath: args[m + 1]) {
+            override = try? JSONDecoder().decode(FaceMetrics.self, from: raw)
+            Self.breadcrumb("metrics override: \(override == nil ? "FAILED TO DECODE" : "loaded")")
+        }
+        Self.breadcrumb("importing \(data.count) bytes as \(selectedSpec.id)")
+        importPhoto(data, metricsOverride: override)
+    }
+
+    /// The Simulator swallows stdout, so harness diagnostics go to a file in the app's own
+    /// container where the test script can read them back.
+    static func breadcrumb(_ line: String) {
+        let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("harness.log")
+        let text = line + "\n"
+        if let handle = try? FileHandle(forWritingTo: url) {
+            handle.seekToEndOfFile(); handle.write(Data(text.utf8)); try? handle.close()
+        } else {
+            try? text.write(to: url, atomically: true, encoding: .utf8)
+        }
+    }
+    #endif
+
+    private static func message(for error: PhotoImporter.ImportError) -> String {
+        switch error {
+        case .noFace:        return S.importNoFace.t
+        case .multipleFaces: return S.importManyFaces.t
+        case .decodeFailed, .analysisFailed:  return S.importUnreadable.t
+        case .exportFailed:  return S.captureError.t
+        }
+    }
+
+    /// Problems the user has to fix themselves by picking or shooting a different photo.
+    /// Everything the export corrects (crop, centering, and — on edit-allowed specs — the
+    /// background) is deliberately left out.
+    var importIssues: [Loc8] {
+        guard let report = importReport else { return [] }
+        let bgHandled = selectedSpec.digitalEditPolicy == .allowed
+        var seen = Set<String>()
+        return report.failures.compactMap { check -> Loc8? in
+            if bgHandled && check.id.hasPrefix("background.") { return nil }
+            // Several check ids collapse onto one piece of advice (both background checks,
+            // all three framing checks). Say it once.
+            guard let text = Self.issueText(check.id), seen.insert(text.en).inserted else { return nil }
+            return text
+        }
+    }
+
+    /// Map a validator check id onto app UI copy. The core's own `LocalizedText` carries only
+    /// en/zh; the app ships in 8 languages, so the user-facing wording lives here.
+    private static func issueText(_ id: String) -> Loc8? {
+        switch id {
+        case "pose":        return S.issuePose
+        case "eyesOpen":    return S.issueEyes
+        case "mouthClosed", "neutral": return S.issueExpression
+        case "glasses":     return S.issueGlasses
+        case "exposure":    return S.issueLighting
+        case "background.uniformity", "background.color": return S.issueBackground
+        case "headHeight", "eyeLine", "centering": return S.issueFraming
+        default: return nil
         }
     }
 
@@ -137,6 +288,8 @@ final class CaptureViewModel {
                 guard let self else { return }
                 self.isCapturing = false
                 if let data {
+                    self.resultSource = .camera
+                    self.importReport = nil   // the viewfinder already coached this one live
                     self.exportedData = data
                     self.showResult = true
                 } else {

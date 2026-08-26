@@ -34,6 +34,9 @@ struct ContentView: View {
                 .sheet(isPresented: $showingAbout) {
                     AboutView()
                 }
+                #if DEBUG
+                .task { model.runImportLaunchHookIfRequested() }
+                #endif
         }
     }
 }

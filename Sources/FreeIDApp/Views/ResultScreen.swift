@@ -11,6 +11,7 @@ struct ResultScreen: View {
     @Bindable var model: CaptureViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var saveState: SaveState = .idle
+    @State private var showingPrintSheet = false
 
     enum SaveState { case idle, saving, saved, failed }
 
@@ -32,10 +33,16 @@ struct ResultScreen: View {
                         .shadow(radius: 8)
                 }
                 #endif
-                Label(S.readyToUse.t, systemImage: "checkmark.seal.fill")
-                    .font(.headline).foregroundStyle(.green)
-                Text("\(SpecText.name(spec)) · \(spec.pixelWidth)×\(spec.pixelHeight)px")
+                // Don't claim "ready to use" over a list of unmet requirements — the card
+                // below says what's wrong, so the headline stays honest and steps aside.
+                if model.importIssues.isEmpty {
+                    Label(S.readyToUse.t, systemImage: "checkmark.seal.fill")
+                        .font(.headline).foregroundStyle(.green)
+                }
+                Text("\(SpecText.name(spec)) · \(spec.pixelWidth)×\(spec.pixelHeight)px · \(spec.dpi)dpi")
                     .font(.caption).foregroundStyle(.secondary)
+
+                if !model.importIssues.isEmpty { issuesCard }
 
                 if model.canChooseBackground {
                     backgroundPicker
@@ -68,6 +75,14 @@ struct ResultScreen: View {
                 }
                 .padding(.horizontal)
 
+                Button { showingPrintSheet = true } label: {
+                    Label(S.printSheet.t, systemImage: "printer")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(imageData == nil)
+                .padding(.horizontal)
+
                 Link(destination: Brand.url) {
                     HStack(spacing: 0) {
                         Text(Brand.creditPrefix.t)
@@ -85,7 +100,34 @@ struct ResultScreen: View {
                     Button(S.done.t) { dismiss() }
                 }
             }
+            .sheet(isPresented: $showingPrintSheet) { PrintSheetView(model: model) }
+            #if DEBUG
+            // Harness: `-show-print-sheet` opens the sheet without a tap, so the screen can be
+            // driven where UI automation isn't available.
+            .task {
+                if ProcessInfo.processInfo.arguments.contains("-show-print-sheet") {
+                    showingPrintSheet = true
+                }
+            }
+            #endif
         }
+    }
+
+    /// What this photo still doesn't satisfy. Only shown for photos picked from the library —
+    /// a live capture was already coached in the viewfinder. Advisory, never blocking: the
+    /// photo is saved either way, and the user is the one who knows what it's for.
+    private var issuesCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(S.checkBeforeYouSubmit.t, systemImage: "exclamationmark.triangle.fill")
+                .font(.subheadline.weight(.semibold)).foregroundStyle(.orange)
+            ForEach(Array(model.importIssues.enumerated()), id: \.offset) { _, issue in
+                Text("• " + issue.t).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal)
     }
 
     /// Row of background color swatches; tapping re-exports the shot in that color.
@@ -133,22 +175,11 @@ struct ResultScreen: View {
     }
 
     private func save() {
-        #if canImport(UIKit)
         guard let data = imageData else { return }
         saveState = .saving
-        PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
-            guard status == .authorized || status == .limited else {
-                Task { @MainActor in saveState = .failed }
-                return
-            }
-            PHPhotoLibrary.shared().performChanges {
-                let req = PHAssetCreationRequest.forAsset()
-                req.addResource(with: .photo, data: data, options: nil)
-            } completionHandler: { ok, _ in
-                Task { @MainActor in saveState = ok ? .saved : .failed }
-            }
+        PhotoLibrarySaver.save(data) { ok in
+            Task { @MainActor in saveState = ok ? .saved : .failed }
         }
-        #endif
     }
 
     /// Write the JPEG to a temp file so ShareLink can share a real image file.

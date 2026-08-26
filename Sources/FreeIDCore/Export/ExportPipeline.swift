@@ -140,6 +140,47 @@ public struct ExportPipeline: Sendable {
         return blend.outputImage ?? ci
     }
 
+    /// Papers a photo sheet can be laid out on. The two imperial sizes are what every
+    /// drugstore/photo-lab print counter accepts (Walgreens, CVS, 沖印店); A4 is for
+    /// printing at home or at an office printer.
+    public enum PrintPaper: String, CaseIterable, Sendable {
+        case fourBySix, fiveBySeven, a4
+
+        /// Millimetres, in the orientation the sheet is laid out in.
+        public var sizeMM: (width: Double, height: Double) {
+            switch self {
+            case .fourBySix:   return (152.4, 101.6)   // 6×4 in, landscape
+            case .fiveBySeven: return (177.8, 127.0)   // 7×5 in, landscape
+            case .a4:          return (210.0, 297.0)   // A4, portrait
+            }
+        }
+    }
+
+    /// Lay copies of `photo` onto `paper` at the spec's DPI, and report how many fit.
+    /// Returns nil if the sheet can't be rendered.
+    public func printSheet(
+        photo: CGImage, spec: PhotoSpec, paper: PrintPaper, marginMM: Double = 3
+    ) -> (image: CGImage, copies: Int)? {
+        let size = paper.sizeMM
+        guard let sheet = printSheet(photo: photo, spec: spec,
+                                     paperWidthMM: size.width, paperHeightMM: size.height,
+                                     marginMM: marginMM) else { return nil }
+        return (sheet, copiesPerSheet(spec: spec, paper: paper, marginMM: marginMM))
+    }
+
+    /// How many spec-sized photos fit on `paper`. Same tiling math as `printSheet`, kept
+    /// pure so the UI can show the count before spending time rendering the sheet.
+    public func copiesPerSheet(spec: PhotoSpec, paper: PrintPaper, marginMM: Double = 3) -> Int {
+        let size = paper.sizeMM
+        let pxPerMM = Double(spec.dpi) / 25.4
+        let sheetW = Int((size.width * pxPerMM).rounded())
+        let sheetH = Int((size.height * pxPerMM).rounded())
+        let gap = Int((marginMM * pxPerMM).rounded())
+        let cols = max(1, (sheetW + gap) / (spec.pixelWidth + gap))
+        let rows = max(1, (sheetH + gap) / (spec.pixelHeight + gap))
+        return cols * rows
+    }
+
     /// Lay multiple copies of the photo onto a print sheet at the spec's DPI.
     /// `paperWidthMM`/`paperHeightMM` default to a 6x4 inch print.
     public func printSheet(
@@ -163,11 +204,24 @@ public struct ExportPipeline: Sendable {
 
         let cols = max(1, (sheetW + gap) / (cellW + gap))
         let rows = max(1, (sheetH + gap) / (cellH + gap))
+
+        // Centre the block of photos. Laying it out from one corner piles all the leftover
+        // paper onto the opposite two edges, which is harder to cut and reads as a mistake.
+        let usedW = cols * cellW + (cols - 1) * gap
+        let usedH = rows * cellH + (rows - 1) * gap
+        let originX = max(0, (sheetW - usedW) / 2)
+        let originY = max(0, (sheetH - usedH) / 2)
+
+        ctx.setStrokeColor(CGColor(red: 0.72, green: 0.72, blue: 0.72, alpha: 1))
+        ctx.setLineWidth(1)
         for r in 0..<rows {
             for c in 0..<cols {
-                let x = gap + c * (cellW + gap)
-                let y = gap + r * (cellH + gap)
-                ctx.draw(photo, in: CGRect(x: x, y: y, width: cellW, height: cellH))
+                let cell = CGRect(x: originX + c * (cellW + gap), y: originY + r * (cellH + gap),
+                                  width: cellW, height: cellH)
+                ctx.draw(photo, in: cell)
+                // A hairline just outside each photo: a white-background ID photo on white
+                // paper has no visible edge, and you can't cut what you can't see.
+                ctx.stroke(cell.insetBy(dx: -0.5, dy: -0.5))
             }
         }
         return ctx.makeImage()
@@ -175,9 +229,15 @@ public struct ExportPipeline: Sendable {
 
     // MARK: - Encoding
 
-    public func jpegData(_ cg: CGImage, quality: Double = 0.95) throws -> Data {
-        try encode(cg, type: UTType.jpeg.identifier,
-                   properties: [kCGImageDestinationLossyCompressionQuality: quality])
+    /// Encode as JPEG. Pass `dpi` to stamp the resolution into the file — print shops and
+    /// AirPrint size the paper from it, so a sheet without it can come out scaled wrong.
+    public func jpegData(_ cg: CGImage, quality: Double = 0.95, dpi: Int? = nil) throws -> Data {
+        var props: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: quality]
+        if let dpi {
+            props[kCGImagePropertyDPIWidth] = dpi
+            props[kCGImagePropertyDPIHeight] = dpi
+        }
+        return try encode(cg, type: UTType.jpeg.identifier, properties: props)
     }
     public func pngData(_ cg: CGImage) throws -> Data {
         try encode(cg, type: UTType.png.identifier, properties: [:])

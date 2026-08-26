@@ -42,12 +42,23 @@ public struct VisionComplianceEngine: Sendable {
         segReq.qualityLevel = .balanced
         segReq.outputPixelFormat = kCVPixelFormatType_OneComponent8
 
-        do { try handler.perform([faceReq, segReq]) }
+        // Perform the two requests SEPARATELY. Face landmarks are essential; person
+        // segmentation only sharpens the background statistics. Batching them means one
+        // unavailable request discards both results — on the Simulator, where segmentation
+        // reports "E5RT is not supported", that turned every photo into "can't read this
+        // photo" even though the face was perfectly detectable.
+        do { try handler.perform([faceReq]) }
         catch { throw EngineError.requestFailed(String(describing: error)) }
+
+        // A separate handler: a handler that already threw can't be reused reliably.
+        let mask: CVPixelBuffer? = {
+            let segHandler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+            guard (try? segHandler.perform([segReq])) != nil else { return nil }
+            return segReq.results?.first?.pixelBuffer
+        }()
 
         let faces = faceReq.results ?? []
         let bitmap = try Bitmap(cgImage: cgImage, maxDimension: 96)
-        let mask = (segReq.results?.first)?.pixelBuffer
         let bg = backgroundStats(bitmap: bitmap, mask: mask)
         let brightness = bitmap.meanLuminance()
 

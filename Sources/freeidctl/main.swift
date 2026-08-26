@@ -158,7 +158,10 @@ case "validate":
 
 #if canImport(ImageIO)
 case "export":
-    guard args.count > 1 else { fail("usage: freeidctl export <image> --spec <id> --out <path> [--replace-bg] [--sheet]") }
+    guard args.count > 1 else {
+        fail("usage: freeidctl export <image> --spec <id> --out <path> [--replace-bg] [--bg #RRGGBB] "
+           + "[--sheet [--paper 4x6|5x7|a4]]")
+    }
     let path = args[1]
     guard let specID = option("spec") else { fail("missing --spec <id>") }
     guard let outPath = option("out") else { fail("missing --out <path>") }
@@ -174,12 +177,35 @@ case "export":
     let opts = ExportPipeline.Options(replaceBackground: flag("replace-bg"), backgroundHex: option("bg"))
     do {
         var out = try pipeline.export(image: cg, spec: spec, metrics: metrics, options: opts)
-        if flag("sheet"), let sheet = pipeline.printSheet(photo: out, spec: spec) { out = sheet }
+        var note = ""
+        if flag("sheet") {
+            let name = (option("paper") ?? "4x6").lowercased()
+            let paper: ExportPipeline.PrintPaper
+            switch name {
+            case "4x6", "6x4": paper = .fourBySix
+            case "5x7", "7x5": paper = .fiveBySeven
+            case "a4":         paper = .a4
+            default: fail("bad --paper (use 4x6, 5x7 or a4)")
+            }
+            guard let sheet = pipeline.printSheet(photo: out, spec: spec, paper: paper) else {
+                fail("print sheet render failed")
+            }
+            out = sheet.image
+            note = " — \(sheet.copies) copies on \(name)"
+        }
         let data = (outPath as NSString).pathExtension.lowercased() == "png"
-            ? try pipeline.pngData(out) : try pipeline.jpegData(out)
+            ? try pipeline.pngData(out) : try pipeline.jpegData(out, dpi: spec.dpi)
         try data.write(to: URL(fileURLWithPath: outPath))
-        print("wrote \(out.width)x\(out.height)px → \(outPath)")
+        print("wrote \(out.width)x\(out.height)px @\(spec.dpi)dpi → \(outPath)\(note)")
     } catch { fail("export failed: \(error)") }
+
+case "measure":
+    // Dump the FaceMetrics measured from a real image. Useful on its own, and it lets the
+    // app's measurements be captured here and replayed where Vision is unavailable.
+    guard args.count > 1 else { fail("usage: freeidctl measure <image>") }
+    let cg = loadCGImage(args[1])
+    do { printJSON(try VisionComplianceEngine().metrics(from: cg)) }
+    catch { fail("vision analysis failed: \(error)") }
 
 case "bgreplace":
     // Replace the background only — keep the original framing/size, no crop to a spec.

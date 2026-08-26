@@ -65,13 +65,14 @@ func toolList() -> [[String: Any]] {
     if allowWrite {
         tools.append(
             ["name": "export_photo",
-             "description": "Crop/align/resize an image to a spec and write the output file. Set replaceBackground only for edit-allowed specs.",
+             "description": "Crop/align/resize an image to a spec and write the output file. Set replaceBackground only for edit-allowed specs. Set paper to tile copies onto a print sheet instead of writing a single photo.",
              "inputSchema": ["type": "object",
                              "properties": [
                                 "path": ["type": "string"],
                                 "spec": ["type": "string"],
                                 "out": ["type": "string"],
-                                "replaceBackground": ["type": "boolean"]],
+                                "replaceBackground": ["type": "boolean"],
+                                "paper": ["type": "string", "enum": ["4x6", "5x7", "a4"]]],
                              "required": ["path", "spec", "out"]]])
     }
     return tools
@@ -125,11 +126,25 @@ func callTool(name: String, args: [String: Any]) -> (text: String, isError: Bool
             guard metrics.faceCount == 1 else { return ("expected one face, found \(metrics.faceCount)", true) }
             let pipeline = ExportPipeline()
             let opts = ExportPipeline.Options(replaceBackground: (args["replaceBackground"] as? Bool) ?? false)
-            let outImage = try pipeline.export(image: cg, spec: spec, metrics: metrics, options: opts)
+            var outImage = try pipeline.export(image: cg, spec: spec, metrics: metrics, options: opts)
+            var note = ""
+            if let paperName = args["paper"] as? String {
+                let papers: [String: ExportPipeline.PrintPaper] = [
+                    "4x6": .fourBySix, "5x7": .fiveBySeven, "a4": .a4,
+                ]
+                guard let paper = papers[paperName.lowercased()] else {
+                    return ("unknown paper \(paperName) — use 4x6, 5x7 or a4", true)
+                }
+                guard let sheet = pipeline.printSheet(photo: outImage, spec: spec, paper: paper) else {
+                    return ("print sheet render failed", true)
+                }
+                outImage = sheet.image
+                note = " (\(sheet.copies) copies on \(paperName))"
+            }
             let data = (out as NSString).pathExtension.lowercased() == "png"
-                ? try pipeline.pngData(outImage) : try pipeline.jpegData(outImage)
+                ? try pipeline.pngData(outImage) : try pipeline.jpegData(outImage, dpi: spec.dpi)
             try data.write(to: URL(fileURLWithPath: out))
-            return ("wrote \(outImage.width)x\(outImage.height)px to \(out)", false)
+            return ("wrote \(outImage.width)x\(outImage.height)px @\(spec.dpi)dpi to \(out)\(note)", false)
         } catch { return ("export failed: \(error)", true) }
         #else
         return ("export unavailable on this platform", true)

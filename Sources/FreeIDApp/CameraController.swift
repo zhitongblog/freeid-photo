@@ -89,6 +89,24 @@ final class CameraController: NSObject {
         }
     }
 
+    /// Render a print sheet from the LAST captured frame — copies of the finished photo laid
+    /// out on photo-lab paper, so the user can hand one file to a print counter.
+    func printSheet(paper: ExportPipeline.PrintPaper, backgroundHex: String?,
+                    completion: @escaping @Sendable (Data?) -> Void) {
+        queue.async {
+            guard let cg = self.lastSource, let metrics = self.lastMetrics, let spec = self.spec else {
+                completion(nil); return
+            }
+            let opts = ExportPipeline.Options(
+                replaceBackground: spec.digitalEditPolicy == .allowed, backgroundHex: backgroundHex)
+            guard let photo = try? self.pipeline.export(image: cg, spec: spec, metrics: metrics, options: opts),
+                  let sheet = self.pipeline.printSheet(photo: photo, spec: spec, paper: paper) else {
+                completion(nil); return
+            }
+            completion(try? self.pipeline.jpegData(sheet.image, dpi: spec.dpi))
+        }
+    }
+
     /// Flip between the front (selfie) and back (someone-helps) camera, reconfiguring the
     /// session input and rebuilding the rotation coordinator for the new device.
     func switchCamera() {
@@ -141,7 +159,7 @@ final class CameraController: NSObject {
         guard let out = try? pipeline.export(image: cg, spec: spec, metrics: metrics, options: opts) else {
             return nil
         }
-        return try? pipeline.jpegData(out)
+        return try? pipeline.jpegData(out, dpi: spec.dpi)
     }
 
     /// Set a connection's rotation to keep video/photo upright for the current orientation.
@@ -160,6 +178,8 @@ final class CameraController: NSObject {
     func switchCamera() {}
     func captureAndExport(backgroundHex: String?, completion: @escaping @Sendable (Data?) -> Void) { completion(nil) }
     func reexport(backgroundHex: String?, completion: @escaping @Sendable (Data?) -> Void) { completion(nil) }
+    func printSheet(paper: ExportPipeline.PrintPaper, backgroundHex: String?,
+                    completion: @escaping @Sendable (Data?) -> Void) { completion(nil) }
     #endif
 }
 

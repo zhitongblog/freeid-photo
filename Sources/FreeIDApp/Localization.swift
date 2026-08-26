@@ -127,6 +127,107 @@ enum S {
         de: "Dokument wählen", it: "Scegli documento")
     static let cancel = Loc8(zh: "取消", zhTW: "取消", en: "Cancel", ja: "キャンセル", ko: "취소",
         fr: "Annuler", de: "Abbrechen", it: "Annulla")
+
+    // Import from the photo library
+    static let choosePhoto = Loc8(zh: "从相册选择", zhTW: "從相簿選擇", en: "Choose photo",
+        ja: "写真から選ぶ", ko: "앨범에서 선택", fr: "Choisir une photo",
+        de: "Foto wählen", it: "Scegli foto")
+    static let importing = Loc8(zh: "处理中…", zhTW: "處理中…", en: "Processing…", ja: "処理中…",
+        ko: "처리 중…", fr: "Traitement…", de: "Verarbeiten…", it: "Elaborazione…")
+    static let importNoFace = Loc8(zh: "这张照片里没找到人脸，换一张试试",
+        zhTW: "這張照片裡沒找到人臉，換一張試試", en: "No face found in that photo — try another one",
+        ja: "この写真では顔を検出できませんでした。別の写真をお試しください",
+        ko: "이 사진에서 얼굴을 찾지 못했어요 — 다른 사진을 골라 주세요",
+        fr: "Aucun visage détecté sur cette photo — essayez-en une autre",
+        de: "Kein Gesicht in diesem Foto gefunden — probiere ein anderes",
+        it: "Nessun volto in questa foto — provane un'altra")
+    static let importManyFaces = Loc8(zh: "照片里不止一个人，换一张只有你的",
+        zhTW: "照片裡不只一個人，換一張只有你的", en: "More than one person in that photo — pick one with just you",
+        ja: "写真に複数の人物がいます。一人だけの写真を選んでください",
+        ko: "사진에 여러 사람이 있어요 — 혼자 나온 사진을 골라 주세요",
+        fr: "Plusieurs personnes sur cette photo — choisissez-en une avec vous seul",
+        de: "Mehr als eine Person auf dem Foto — wähle eines nur mit dir",
+        it: "Più di una persona nella foto — scegline una con te soltanto")
+    static let importUnreadable = Loc8(zh: "这张照片读不出来，换一张试试",
+        zhTW: "這張照片讀不出來，換一張試試", en: "Couldn't read that photo — try another one",
+        ja: "この写真を読み込めませんでした。別の写真をお試しください",
+        ko: "이 사진을 읽을 수 없어요 — 다른 사진을 골라 주세요",
+        fr: "Impossible de lire cette photo — essayez-en une autre",
+        de: "Foto konnte nicht gelesen werden — probiere ein anderes",
+        it: "Impossibile leggere la foto — provane un'altra")
+
+    // Honest verdict on an imported photo (things the export can't fix for you)
+    static let checkBeforeYouSubmit = Loc8(zh: "提交前请注意", zhTW: "提交前請注意",
+        en: "Check before you submit", ja: "提出前にご確認ください", ko: "제출 전 확인하세요",
+        fr: "À vérifier avant l'envoi", de: "Vor dem Einreichen prüfen",
+        it: "Controlla prima di inviare")
+    static let issuePose = Loc8(zh: "头有点歪或侧着，要正对镜头", zhTW: "頭有點歪或側著，要正對鏡頭",
+        en: "Head is turned or tilted — it should face straight ahead",
+        ja: "顔が傾いています。正面を向いてください", ko: "얼굴이 기울었어요 — 정면을 봐야 해요",
+        fr: "Tête tournée ou inclinée — elle doit être de face",
+        de: "Kopf gedreht oder geneigt — er sollte gerade nach vorn zeigen",
+        it: "Testa girata o inclinata — deve guardare dritto")
+    static let issueEyes = Loc8(zh: "眼睛要睁开并看向镜头", zhTW: "眼睛要睜開並看向鏡頭",
+        en: "Eyes must be open and looking at the camera",
+        ja: "目を開けてカメラを見てください", ko: "눈을 뜨고 카메라를 봐야 해요",
+        fr: "Les yeux doivent être ouverts et regarder l'objectif",
+        de: "Augen müssen offen sein und in die Kamera blicken",
+        it: "Occhi aperti e rivolti all'obiettivo")
+    static let issueExpression = Loc8(zh: "表情要自然，嘴巴闭上", zhTW: "表情要自然，嘴巴閉上",
+        en: "Neutral expression with your mouth closed",
+        ja: "口を閉じ、自然な表情にしてください", ko: "입을 다물고 자연스러운 표정이어야 해요",
+        fr: "Expression neutre, bouche fermée",
+        de: "Neutraler Ausdruck, Mund geschlossen",
+        it: "Espressione neutra, bocca chiusa")
+    static let issueGlasses = Loc8(zh: "眼镜不符合要求（反光或该摘掉）",
+        zhTW: "眼鏡不符合要求（反光或該摘掉）", en: "Glasses are a problem here — glare, or not allowed",
+        ja: "眼鏡に問題があります（反射、または不可）",
+        ko: "안경이 문제예요 — 반사가 있거나 허용되지 않아요",
+        fr: "Problème de lunettes — reflets, ou non autorisées",
+        de: "Brille ist ein Problem — Reflexe oder nicht erlaubt",
+        it: "Problema con gli occhiali — riflessi o non ammessi")
+    static let issueLighting = Loc8(zh: "光线太暗或太亮", zhTW: "光線太暗或太亮",
+        en: "Lighting is too dark or too bright", ja: "明るすぎるか暗すぎます",
+        ko: "너무 어둡거나 밝아요", fr: "Éclairage trop sombre ou trop clair",
+        de: "Beleuchtung zu dunkel oder zu hell", it: "Illuminazione troppo scura o chiara")
+    static let issueBackground = Loc8(zh: "背景不符合要求，需要干净均匀的底色",
+        zhTW: "背景不符合要求，需要乾淨均勻的底色",
+        en: "Background doesn't meet the rule — it needs to be plain and even",
+        ja: "背景が要件を満たしていません。無地で均一な背景が必要です",
+        ko: "배경이 규정에 맞지 않아요 — 단색의 균일한 배경이 필요해요",
+        fr: "Le fond ne respecte pas la règle — il doit être uni et régulier",
+        de: "Hintergrund erfüllt die Regel nicht — er muss schlicht und gleichmäßig sein",
+        it: "Lo sfondo non rispetta la regola — dev'essere uniforme")
+    static let issueFraming = Loc8(zh: "这张照片裁不出合规构图：脸离边太近，或在画面里过大/过小",
+        zhTW: "這張照片裁不出合規構圖：臉離邊太近，或在畫面裡過大/過小",
+        en: "This photo can't be framed to spec — the face is too near an edge, or too large/small in frame",
+        ja: "この写真は規格の構図に収まりません。顔が端に近すぎるか、大きすぎ/小さすぎます",
+        ko: "이 사진은 규격 구도로 자를 수 없어요 — 얼굴이 가장자리에 너무 가깝거나 너무 크거나 작아요",
+        fr: "Impossible de cadrer cette photo — le visage est trop près d'un bord, ou trop grand/petit",
+        de: "Dieses Foto lässt sich nicht normgerecht zuschneiden — Gesicht zu nah am Rand oder zu groß/klein",
+        it: "Questa foto non si può inquadrare a norma — volto troppo vicino al bordo o troppo grande/piccolo")
+
+    // Print sheet
+    static let printSheet = Loc8(zh: "打印排版", zhTW: "列印排版", en: "Print sheet",
+        ja: "プリント用シート", ko: "인화용 시트", fr: "Planche à imprimer",
+        de: "Druckbogen", it: "Foglio di stampa")
+    static let printSheetNote = Loc8(
+        zh: "把多张照片拼到一张相纸上，拿去冲印店或自己打印。",
+        zhTW: "把多張照片拼到一張相紙上，拿去沖印店或自己列印。",
+        en: "Tiles copies onto one sheet of photo paper for a print shop or your own printer.",
+        ja: "1 枚の印画紙に複数枚を並べます。写真店や自宅のプリンターで印刷できます。",
+        ko: "한 장의 인화지에 여러 장을 배치합니다. 사진관이나 집 프린터에서 인쇄하세요.",
+        fr: "Assemble plusieurs copies sur une feuille, pour un labo photo ou votre imprimante.",
+        de: "Legt mehrere Kopien auf einen Bogen — fürs Fotolabor oder den eigenen Drucker.",
+        it: "Dispone più copie su un foglio, per il laboratorio o la tua stampante.")
+    static let copiesFormat = Loc8(zh: "%d 张", zhTW: "%d 張", en: "%d copies", ja: "%d 枚",
+        ko: "%d장", fr: "%d copies", de: "%d Kopien", it: "%d copie")
+    static let sheetFailed = Loc8(zh: "排版失败，请重试", zhTW: "排版失敗，請重試",
+        en: "Couldn't build the sheet — try again", ja: "シートを作成できませんでした",
+        ko: "시트를 만들지 못했어요 — 다시 시도하세요",
+        fr: "Impossible de créer la planche — réessayez",
+        de: "Bogen konnte nicht erstellt werden — erneut versuchen",
+        it: "Impossibile creare il foglio — riprova")
 }
 
 /// Localized country / document-type / color names, composed for spec rows.

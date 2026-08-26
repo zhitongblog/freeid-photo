@@ -40,9 +40,17 @@ for (const [locale, a] of Object.entries(M.appInfoLocalizations)) {
     relationships: { appInfo: { data: { type: 'appInfos', id: appInfo.id } } } } });
   log('appInfo loc', locale);
 }
-// primary category
-await api('PATCH', `/v1/appInfos/${appInfo.id}`, { data: { type: 'appInfos', id: appInfo.id,
-  relationships: { primaryCategory: { data: { type: 'appCategories', id: M.appFields.primaryCategory } } } } });
+// categories. The secondary one is optional but free discovery — a second shelf to be
+// browsed from — so it's applied whenever metadata.mjs names one.
+const categoryRels = {
+  primaryCategory: { data: { type: 'appCategories', id: M.appFields.primaryCategory } },
+};
+if (M.appFields.secondaryCategory) {
+  categoryRels.secondaryCategory = { data: { type: 'appCategories', id: M.appFields.secondaryCategory } };
+}
+await api('PATCH', `/v1/appInfos/${appInfo.id}`, {
+  data: { type: 'appInfos', id: appInfo.id, relationships: categoryRels },
+});
 
 // 3) Version localizations (description / keywords / promo / whatsNew / urls).
 const vlocs = (await api('GET', `/v1/appStoreVersions/${verId}/appStoreVersionLocalizations?limit=50`)).data;
@@ -63,11 +71,28 @@ log('copyright / contentRights / releaseType set');
 const decl = (await api('GET', `/v1/appInfos/${appInfo.id}/ageRatingDeclaration`)).data;
 if (decl) { await api('PATCH', `/v1/ageRatingDeclarations/${decl.id}`, { data: { type: 'ageRatingDeclarations', id: decl.id, attributes: M.ageRating } }); log('age rating 4+'); }
 
-// 6) Review contact.
+// 6) Review contact. Phone/email come from ASC_CONTACT_* env vars and are deliberately not in
+// this repo, so when they're unset we must NOT send empty strings — that would wipe the
+// contact Apple already has and stall the review. Send only the fields we actually have.
 const rd = (await api('GET', `/v1/appStoreVersions/${verId}/appStoreReviewDetail`)).data;
-if (rd) await api('PATCH', `/v1/appStoreReviewDetails/${rd.id}`, { data: { type: 'appStoreReviewDetails', id: rd.id, attributes: M.reviewContact } });
-else await api('POST', '/v1/appStoreReviewDetails', { data: { type: 'appStoreReviewDetails', attributes: M.reviewContact,
-  relationships: { appStoreVersion: { data: { type: 'appStoreVersions', id: verId } } } } });
+const contact = Object.fromEntries(
+  Object.entries(M.reviewContact).filter(([, v]) => v !== '' && v !== undefined && v !== null));
+const missing = ['contactPhone', 'contactEmail'].filter((k) => !contact[k]);
+if (rd) {
+  if (missing.length && missing.some((k) => !rd.attributes[k])) {
+    throw new Error(`review contact ${missing.join('/')} not set here and not already on the `
+      + `version — export ASC_CONTACT_PHONE / ASC_CONTACT_EMAIL before releasing`);
+  }
+  if (missing.length) log('keeping existing review contact for', missing.join(', '));
+  await api('PATCH', `/v1/appStoreReviewDetails/${rd.id}`, { data: { type: 'appStoreReviewDetails', id: rd.id, attributes: contact } });
+} else {
+  if (missing.length) {
+    throw new Error(`no review detail yet and ${missing.join('/')} unset — `
+      + `export ASC_CONTACT_PHONE / ASC_CONTACT_EMAIL before releasing`);
+  }
+  await api('POST', '/v1/appStoreReviewDetails', { data: { type: 'appStoreReviewDetails', attributes: contact,
+    relationships: { appStoreVersion: { data: { type: 'appStoreVersions', id: verId } } } } });
+}
 log('review contact set');
 
 // 7) Attach the build matching <buildNumber>.
