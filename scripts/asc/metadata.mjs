@@ -8,13 +8,17 @@
 export const appInfoLocalizations = {
   'en-US':   { name: 'FreeID Photo', subtitle: 'On-device ID photo maker',     privacyPolicyUrl: 'https://doaipm.com/privacy' },
   'zh-Hans': { name: 'FreeID 证件照 · 护照签证照', subtitle: '本地处理不上传 · 打印排版', privacyPolicyUrl: 'https://doaipm.com/privacy' },
-  'zh-Hant': { name: 'FreeID 證件照 · 護照簽證照', subtitle: '本機處理不上傳 · 列印排版', privacyPolicyUrl: 'https://doaipm.com/privacy' },
-  'ja':      { name: 'FreeID Photo', subtitle: '端末内で作る証明写真',          privacyPolicyUrl: 'https://doaipm.com/privacy' },
-  'ko':      { name: 'FreeID Photo', subtitle: '기기 내 처리 증명사진',          privacyPolicyUrl: 'https://doaipm.com/privacy' },
-  'fr-FR':   { name: 'FreeID Photo', subtitle: "Photos d'identité hors ligne", privacyPolicyUrl: 'https://doaipm.com/privacy' },
-  'de-DE':   { name: 'FreeID Photo', subtitle: 'Passfotos lokal erstellt',     privacyPolicyUrl: 'https://doaipm.com/privacy' },
-  'it':      { name: 'FreeID Photo', subtitle: 'Foto tessera sul dispositivo', privacyPolicyUrl: 'https://doaipm.com/privacy' },
 };
+
+// Only the locales we also write DESCRIPTION + KEYWORDS for below belong here. Adding an
+// appInfo localization makes App Store Connect spawn an empty *version* localization for that
+// locale, and Apple then rejects the whole submission with a bare 409 "This resource cannot be
+// reviewed". The app's UI is localized in 8 languages regardless (Localization.swift); these
+// are store-listing locales. When store copy for ja/ko/fr-FR/de-DE/it/zh-Hant is written, add
+// it to `versionLocalizations` and the name/subtitle here in the same change — never one
+// without the other. Previously-drafted subtitles, for whoever picks that up:
+//   zh-Hant '本機處理不上傳 · 列印排版' | ja '端末内で作る証明写真' | ko '기기 내 처리 증명사진'
+//   fr-FR "Photos d'identité hors ligne" | de-DE 'Passfotos lokal erstellt' | it 'Foto tessera sul dispositivo'
 
 // Version localizations: description, keywords (≤100 chars), promo, support/marketing URL,
 // and whatsNew (release notes — required for UPDATES, ignored on the very first version).

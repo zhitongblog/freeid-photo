@@ -113,7 +113,20 @@ for (const [locale, files] of Object.entries(M.screenshots.locales)) {
   for (const f of files) { await uploadScreenshot(set.id, M.screenshots.dir + f); log('  uploaded', locale, f); }
 }
 
-// 9) Submit for review.
+// 9) Prune version localizations we don't actually write copy for.
+//
+// Creating an appInfo localization (name/subtitle) for a locale makes App Store Connect spawn
+// a matching *version* localization — with no description and no keywords. Apple then refuses
+// the whole submission with a bare 409 "This resource cannot be reviewed", naming nothing.
+// We ship app names in 8 languages but store copy in only the two below, so drop the rest.
+const written = new Set(Object.keys(M.versionLocalizations));
+for (const vl of (await api('GET', `/v1/appStoreVersions/${verId}/appStoreVersionLocalizations?limit=50`)).data) {
+  if (written.has(vl.attributes.locale)) continue;
+  await api('DELETE', `/v1/appStoreVersionLocalizations/${vl.id}`);
+  log('pruned empty version localization', vl.attributes.locale);
+}
+
+// 10) Submit for review.
 if (NO_SUBMIT) { log('--no-submit: everything staged but NOT submitted.'); process.exit(0); }
 let sub = (await api('GET', `/v1/apps/${APP}/reviewSubmissions?filter[state]=READY_FOR_REVIEW&limit=1`)).data?.[0]
   || (await api('POST', '/v1/reviewSubmissions', { data: { type: 'reviewSubmissions', attributes: { platform: 'IOS' },
