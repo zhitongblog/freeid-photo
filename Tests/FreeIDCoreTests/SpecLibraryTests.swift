@@ -43,6 +43,17 @@ final class SpecLibraryTests: XCTestCase {
         let s = try XCTUnwrap(try SpecLibrary.bundled().spec(id: "us-passport"))
         XCTAssertEqual(s.digitalEditPolicy, .strict)
     }
+
+    func testCustomSpecDerivesValidRangesAndFileSpec() {
+        let custom = PhotoSpec.custom(widthMM: 33, heightMM: 48, minKB: 20, maxKB: 100)
+        XCTAssertEqual(custom.id, "custom-33x48")
+        XCTAssertEqual(custom.outputSize.widthMM, 33)
+        XCTAssertEqual(custom.outputSize.heightMM, 48)
+        XCTAssertLessThan(custom.headHeight.min, custom.headHeight.max)
+        XCTAssertLessThan(custom.eyeLineFromBottom.min, custom.eyeLineFromBottom.max)
+        XCTAssertEqual(custom.fileSpec?.minKB, 20)
+        XCTAssertEqual(custom.fileSpec?.maxKB, 100)
+    }
 }
 
 final class ColorMathTests: XCTestCase {

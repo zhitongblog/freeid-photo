@@ -1,6 +1,7 @@
 #if canImport(CoreImage) && canImport(Vision)
 import XCTest
 import CoreGraphics
+import ImageIO
 @testable import FreeIDCore
 
 /// The print sheet is what a photo lab actually prints, so its physical geometry has to be
@@ -93,6 +94,22 @@ final class PrintSheetTests: XCTestCase {
         // Allow a couple of pixels for the integer split and the hairline cut guides.
         XCTAssertLessThanOrEqual(abs(leftMargin - rightMargin), 3, "horizontal margins differ")
         XCTAssertLessThanOrEqual(abs(topMargin - bottomMargin), 3, "vertical margins differ")
+    }
+
+    func testJPEGEnforcesMinAndMaxKBLimitsAndStaysDecodable() throws {
+        let spec = PhotoSpec.custom(widthMM: 25, heightMM: 35, dpi: 300, minKB: 45, maxKB: 80)
+        let img = solidPhoto(spec)
+        let data = try pipeline.jpegData(img, spec: spec)
+        XCTAssertGreaterThanOrEqual(data.count, 45 * 1024, "must pad above minKB")
+        XCTAssertLessThanOrEqual(data.count, 80 * 1024, "must stay within maxKB")
+
+        // Verify ImageIO decodes the padded JPEG cleanly with original pixel dimensions and DPI.
+        let src = try XCTUnwrap(CGImageSourceCreateWithData(data as CFData, nil))
+        let decoded = try XCTUnwrap(CGImageSourceCreateImageAtIndex(src, 0, nil))
+        XCTAssertEqual(decoded.width, spec.pixelWidth)
+        XCTAssertEqual(decoded.height, spec.pixelHeight)
+        let props = try XCTUnwrap(CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any])
+        XCTAssertEqual(props[kCGImagePropertyDPIWidth] as? Int, 300)
     }
 }
 #endif

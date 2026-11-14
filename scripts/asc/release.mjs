@@ -73,11 +73,25 @@ if (decl) { await api('PATCH', `/v1/ageRatingDeclarations/${decl.id}`, { data: {
 
 // 6) Review contact. Phone/email come from ASC_CONTACT_* env vars and are deliberately not in
 // this repo, so when they're unset we must NOT send empty strings — that would wipe the
-// contact Apple already has and stall the review. Send only the fields we actually have.
+// contact Apple already has and stall the review. Send only the fields we actually have, and
+// fall back to a previous version's review detail if a brand-new version doesn't have one yet.
 const rd = (await api('GET', `/v1/appStoreVersions/${verId}/appStoreReviewDetail`)).data;
 const contact = Object.fromEntries(
   Object.entries(M.reviewContact).filter(([, v]) => v !== '' && v !== undefined && v !== null));
-const missing = ['contactPhone', 'contactEmail'].filter((k) => !contact[k]);
+let missing = ['contactPhone', 'contactEmail'].filter((k) => !contact[k]);
+if (missing.length && (!rd || missing.some((k) => !rd.attributes[k]))) {
+  for (const prev of vers) {
+    if (prev.id === verId) continue;
+    const prevRd = (await api('GET', `/v1/appStoreVersions/${prev.id}/appStoreReviewDetail`)).data;
+    if (prevRd?.attributes) {
+      for (const k of missing) {
+        if (prevRd.attributes[k]) contact[k] = prevRd.attributes[k];
+      }
+      missing = ['contactPhone', 'contactEmail'].filter((k) => !contact[k]);
+      if (!missing.length) { log('copied review contact from previous version', prev.attributes.versionString); break; }
+    }
+  }
+}
 if (rd) {
   if (missing.length && missing.some((k) => !rd.attributes[k])) {
     throw new Error(`review contact ${missing.join('/')} not set here and not already on the `

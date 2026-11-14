@@ -59,6 +59,20 @@ final class FaceMetricsMathTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(m.crownY, 0)
         XCTAssertLessThanOrEqual(m.crownY, 1)
     }
+
+    func testMeasuredCrownOverridesHairPadWithinPhysiologicalBounds() {
+        var inputs = sampleInputs()
+        // Face box y=0.35, h=0.40 → boxTop = 0.75.
+        // Measured crown at 0.90 (+0.375h above boxTop) is within [0.12h, 0.55h] → top-left crownY = 0.10.
+        inputs.measuredCrownVisionY = 0.90
+        let m = FaceMetricsMath.build(inputs)
+        XCTAssertEqual(m.crownY, 0.10, accuracy: 0.0001)
+
+        // Outlier mask noise way above head (0.99 → +0.60h) clamps to maxCrownHairPad (0.75 + 0.4*0.55 = 0.97 → crownY = 0.03).
+        inputs.measuredCrownVisionY = 0.99
+        let clampedHigh = FaceMetricsMath.build(inputs)
+        XCTAssertEqual(clampedHigh.crownY, 0.03, accuracy: 0.0001)
+    }
 }
 
 final class ExportGeometryTests: XCTestCase {

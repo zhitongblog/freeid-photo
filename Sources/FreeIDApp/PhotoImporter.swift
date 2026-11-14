@@ -16,7 +16,7 @@ import CoreGraphics
 ///
 /// Work runs on a private serial queue and only Sendable values cross back, matching the
 /// concurrency shape of `CameraController`.
-final class PhotoImporter {
+final class PhotoImporter: @unchecked Sendable {
 
     /// What an import produced: the finished photo, plus an honest verdict on it.
     struct Outcome: Sendable {
@@ -113,7 +113,7 @@ final class PhotoImporter {
         guard let out = try? pipeline.export(image: cg, spec: spec, metrics: metrics, options: opts) else {
             return nil
         }
-        return try? pipeline.jpegData(out, dpi: spec.dpi)
+        return try? pipeline.jpegData(out, spec: spec)
     }
 
     private func sheetData(_ cg: CGImage, _ metrics: FaceMetrics, _ spec: PhotoSpec,

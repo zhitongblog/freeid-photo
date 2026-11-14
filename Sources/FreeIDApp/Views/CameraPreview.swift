@@ -11,10 +11,13 @@ struct CameraPreview: UIViewRepresentable {
         let v = PreviewView()
         v.videoPreviewLayer.session = controller.session
         v.videoPreviewLayer.videoGravity = .resizeAspectFill
+        controller.attachPreviewLayer(v.videoPreviewLayer)
         return v
     }
 
-    func updateUIView(_ uiView: PreviewView, context: Context) {}
+    func updateUIView(_ uiView: PreviewView, context: Context) {
+        controller.attachPreviewLayer(uiView.videoPreviewLayer)
+    }
 
     final class PreviewView: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }

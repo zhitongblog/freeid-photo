@@ -37,10 +37,9 @@ export const versionLocalizations = {
 Everything runs on-device. Nothing is uploaded.`,
     keywords: 'passport photo,id photo,visa photo,headshot,background,document,1 inch,2 inch,ID picture,compliant',
     promotionalText: 'Free, on-device passport & ID photos. Nothing uploaded, no watermark, full resolution.',
-    whatsNew: `• Use a photo you already have — pick one from your library instead of shooting live. Ideal for babies and for photos someone else took.
-• Print sheet — tile copies onto 4×6", 5×7" or A4 and hand one file to a print shop or your own printer. Cut guides included.
-• Imported photos now get an honest check: anything the crop can't fix is listed before you submit.
-• Photos and sheets carry their DPI, so labs print them at true size.`,
+    whatsNew: `• Custom size & file-size (KB) limits — search specs by keyword or enter exact millimetres and max KB for online portals.
+• Back-camera voice coach & auto-shutter — shoot yourself with the sharper rear camera guided by spoken prompts.
+• Smarter head-crown detection and natural hair-edge blending when replacing backgrounds.`,
     supportUrl: 'https://doaipm.com', marketingUrl: 'https://doaipm.com',
   },
   'zh-Hans': {
@@ -56,10 +55,9 @@ Everything runs on-device. Nothing is uploaded.`,
 全部本地处理,不上传任何数据。`,
     keywords: '证件照,护照照片,签证照片,一寸照,二寸照,合规证件照,换背景,白底,蓝底,红底,身份证照片',
     promotionalText: '证件照本地处理，不上传、无水印、原图分辨率。',
-    whatsNew: `• 支持从相册选照片 —— 不用非得现拍。给宝宝办护照、别人帮你拍好的照片，都能直接用。
-• 打印排版 —— 一键拼到 4×6、5×7 英寸相纸或 A4 上，带裁切线，拿一个文件去冲印店或自己打印。
-• 导入的照片会给出如实提醒：裁切修不掉的问题，提交前先告诉你。
-• 照片和排版都写入 DPI，冲印店按真实尺寸打印。`,
+    whatsNew: `• 支持自定义毫米尺寸与文件大小（KB）限制，并可按国家、证件或尺寸快速搜索规格。
+• 后置相机新增语音引导与对准自动快门，一个人也能用更清晰的后置镜头自拍。
+• 优化发顶识别与换底边缘羽化，发丝过渡更自然、头顶留白更精准。`,
     supportUrl: 'https://doaipm.com', marketingUrl: 'https://doaipm.com',
   },
 };

@@ -193,10 +193,12 @@ case "export":
             out = sheet.image
             note = " — \(sheet.copies) copies on \(name)"
         }
+        let isSheet = flag("sheet")
         let data = (outPath as NSString).pathExtension.lowercased() == "png"
-            ? try pipeline.pngData(out) : try pipeline.jpegData(out, dpi: spec.dpi)
+            ? try pipeline.pngData(out)
+            : (isSheet ? try pipeline.jpegData(out, dpi: spec.dpi) : try pipeline.jpegData(out, spec: spec))
         try data.write(to: URL(fileURLWithPath: outPath))
-        print("wrote \(out.width)x\(out.height)px @\(spec.dpi)dpi → \(outPath)\(note)")
+        print("wrote \(out.width)x\(out.height)px @\(spec.dpi)dpi (\(data.count / 1024)KB) → \(outPath)\(note)")
     } catch { fail("export failed: \(error)") }
 
 case "measure":
@@ -226,31 +228,26 @@ case "bgreplace":
 
 case "customexport":
     // Export to an arbitrary physical size (mm) with ID-photo head framing + optional bg.
-    //   freeidctl customexport <image> --mm 40x60 --out <path> [--bg #RRGGBB]
-    guard args.count > 1 else { fail("usage: freeidctl customexport <image> --mm 40x60 --out <path> [--bg #RRGGBB]") }
+    //   freeidctl customexport <image> --mm 40x60 --out <path> [--bg #RRGGBB] [--min-kb 20] [--max-kb 100]
+    guard args.count > 1 else { fail("usage: freeidctl customexport <image> --mm 40x60 --out <path> [--bg #RRGGBB] [--min-kb N] [--max-kb N]") }
     let path = args[1]
     guard let outPath = option("out") else { fail("missing --out <path>") }
     let dims = (option("mm") ?? "40x60").lowercased().replacingOccurrences(of: "*", with: "x").split(separator: "x")
     guard dims.count == 2, let w = Double(dims[0]), let h = Double(dims[1]), w > 0, h > 0 else { fail("bad --mm (use e.g. 40x60)") }
     let bg = option("bg")
+    let minKB = option("min-kb").flatMap(Int.init)
+    let maxKB = option("max-kb").flatMap(Int.init)
     let cg = loadCGImage(path)
     let metrics: FaceMetrics
     do { metrics = try VisionComplianceEngine().metrics(from: cg) } catch { fail("vision analysis failed: \(error)") }
     if metrics.faceCount != 1 { fail("expected exactly one face, found \(metrics.faceCount)") }
-    let spec = PhotoSpec(
-        id: "custom-\(Int(w))x\(Int(h))", country: "", docType: .general,
-        displayName: LocalizedText(en: "\(Int(w))x\(Int(h))mm", zh: "\(Int(w))x\(Int(h))mm"),
-        outputSize: PhysicalSize(widthMM: w, heightMM: h), dpi: 300,
-        headHeight: RangeMM(min: h * 0.58, max: h * 0.69), eyeLineFromBottom: RangeMM(min: h * 0.55, max: h * 0.62),
-        background: BackgroundRule(name: LocalizedText(en: "White", zh: "白色"), hex: bg ?? "#FFFFFF", toleranceDeltaE: 12, minUniformity: 0.85),
-        digitalEditPolicy: .allowed, expression: ExpressionRule(neutral: true, mouthClosed: true, eyesOpen: true),
-        glasses: .allowedNoGlare, fileSpec: nil, officialSourceURL: "", lastVerified: "")
+    let spec = PhotoSpec.custom(widthMM: w, heightMM: h, backgroundHex: bg ?? "#FFFFFF", minKB: minKB, maxKB: maxKB)
     let pipeline2 = ExportPipeline()
     do {
         let out = try pipeline2.export(image: cg, spec: spec, metrics: metrics, options: .init(replaceBackground: bg != nil, backgroundHex: bg))
-        let data = (outPath as NSString).pathExtension.lowercased() == "png" ? try pipeline2.pngData(out) : try pipeline2.jpegData(out)
+        let data = (outPath as NSString).pathExtension.lowercased() == "png" ? try pipeline2.pngData(out) : try pipeline2.jpegData(out, spec: spec)
         try data.write(to: URL(fileURLWithPath: outPath))
-        print("wrote \(out.width)x\(out.height)px (\(Int(w))x\(Int(h))mm @300dpi) → \(outPath)")
+        print("wrote \(out.width)x\(out.height)px (\(Int(w))x\(Int(h))mm @300dpi, \(data.count / 1024)KB) → \(outPath)")
     } catch { fail("customexport failed: \(error)") }
 
 #endif

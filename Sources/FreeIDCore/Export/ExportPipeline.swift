@@ -129,6 +129,17 @@ public struct ExportPipeline: Sendable {
             y: ci.extent.height / maskCI.extent.height)
         maskCI = maskCI.transformed(by: s)
 
+        // Subtle edge feathering (~0.15% of image width, clamped to 0.8..2.2 px) so hair and
+        // shoulder contours blend smoothly without harsh 1-pixel stair-stepping or white halos.
+        let radius = min(2.2, max(0.8, ci.extent.width * 0.0015))
+        if let blur = CIFilter(name: "CIGaussianBlur") {
+            blur.setValue(maskCI.clampedToExtent(), forKey: kCIInputImageKey)
+            blur.setValue(radius, forKey: kCIInputRadiusKey)
+            if let blurred = blur.outputImage?.cropped(to: ci.extent) {
+                maskCI = blurred
+            }
+        }
+
         let rgb = ColorMath.rgb(fromHex: hex) ?? .init(r: 1, g: 1, b: 1)
         let bg = CIImage(color: CIColor(red: rgb.r, green: rgb.g, blue: rgb.b))
             .cropped(to: ci.extent)
@@ -229,15 +240,79 @@ public struct ExportPipeline: Sendable {
 
     // MARK: - Encoding
 
+    /// Encode as JPEG honoring the spec's DPI and optional `fileSpec` (minKB / maxKB) limits.
+    public func jpegData(_ cg: CGImage, spec: PhotoSpec) throws -> Data {
+        try jpegData(cg, quality: 0.95, dpi: spec.dpi,
+                     minKB: spec.fileSpec?.minKB, maxKB: spec.fileSpec?.maxKB)
+    }
+
     /// Encode as JPEG. Pass `dpi` to stamp the resolution into the file — print shops and
     /// AirPrint size the paper from it, so a sheet without it can come out scaled wrong.
-    public func jpegData(_ cg: CGImage, quality: Double = 0.95, dpi: Int? = nil) throws -> Data {
-        var props: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: quality]
-        if let dpi {
-            props[kCGImagePropertyDPIWidth] = dpi
-            props[kCGImagePropertyDPIHeight] = dpi
+    /// When `minKB` or `maxKB` are set, adjusts JPEG quality (and if needed, lossless JPEG
+    /// comment padding) so the returned bytes fit the required file-size window.
+    public func jpegData(
+        _ cg: CGImage, quality: Double = 0.95, dpi: Int? = nil,
+        minKB: Int? = nil, maxKB: Int? = nil
+    ) throws -> Data {
+        func rawJPEG(q: Double) throws -> Data {
+            var props: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: q]
+            if let dpi {
+                props[kCGImagePropertyDPIWidth] = dpi
+                props[kCGImagePropertyDPIHeight] = dpi
+            }
+            return try encode(cg, type: UTType.jpeg.identifier, properties: props)
         }
-        return try encode(cg, type: UTType.jpeg.identifier, properties: props)
+
+        var data = try rawJPEG(q: quality)
+        let maxBytes = maxKB.map { $0 * 1024 }
+        let minBytes = minKB.map { $0 * 1024 }
+
+        // 1. If over maxKB, binary-search for the highest quality that fits within maxBytes.
+        if let maxBytes, data.count > maxBytes {
+            var lo = 0.05
+            var hi = quality
+            var best: Data?
+            for _ in 0..<8 {
+                let mid = (lo + hi) / 2.0
+                let candidate = try rawJPEG(q: mid)
+                if candidate.count <= maxBytes {
+                    best = candidate
+                    lo = mid
+                } else {
+                    hi = mid
+                }
+            }
+            data = try best ?? rawJPEG(q: 0.05)
+        }
+
+        // 2. If under minKB, first try maximum quality (if within maxBytes), then pad with
+        //    standards-compliant JPEG COM (0xFF 0xFE) segments right after SOI (0xFF 0xD8).
+        if let minBytes, data.count < minBytes {
+            if quality < 1.0 {
+                let maxQ = try rawJPEG(q: 1.0)
+                if maxBytes == nil || maxQ.count <= maxBytes! {
+                    data = maxQ
+                }
+            }
+            if data.count < minBytes, data.count >= 2, data[0] == 0xFF, data[1] == 0xD8 {
+                let headroom = maxBytes.map { max(0, $0 - minBytes) } ?? 4096
+                let targetBytes = minBytes + min(1024, headroom / 2)
+                var needed = targetBytes - data.count
+                var padded = Data([0xFF, 0xD8])
+                while needed > 0 {
+                    // Each COM segment is 0xFF 0xFE + 2-byte length (payload + 2) + payload.
+                    let payloadLen = max(1, min(60000, needed - 4))
+                    let segLen = UInt16(payloadLen + 2)
+                    padded.append(contentsOf: [0xFF, 0xFE, UInt8(segLen >> 8), UInt8(segLen & 0xFF)])
+                    padded.append(Data(repeating: 0x20, count: payloadLen))
+                    needed -= (payloadLen + 4)
+                }
+                padded.append(data.dropFirst(2))
+                data = padded
+            }
+        }
+
+        return data
     }
     public func pngData(_ cg: CGImage) throws -> Data {
         try encode(cg, type: UTType.png.identifier, properties: [:])

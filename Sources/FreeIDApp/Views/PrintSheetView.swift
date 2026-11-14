@@ -39,56 +39,62 @@ struct PrintSheetView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                Picker("", selection: $paper) {
-                    ForEach(ExportPipeline.PrintPaper.allCases, id: \.self) { p in
-                        Text(label(for: p)).tag(p)
+            GeometryReader { geo in
+                let isWide = geo.size.width > 560 && geo.size.width > geo.size.height * 0.85
+                ScrollView {
+                    VStack(spacing: 16) {
+                        Picker("", selection: $paper) {
+                            ForEach(ExportPipeline.PrintPaper.allCases, id: \.self) { p in
+                                Text(label(for: p)).tag(p)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .padding(.horizontal)
+
+                        Text(S.printSheetNote.t)
+                            .font(.caption).foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center).padding(.horizontal)
+
+                        ZStack {
+                            #if canImport(UIKit)
+                            if let data = sheetData, let ui = UIImage(data: data) {
+                                Image(uiImage: ui)
+                                    .resizable().scaledToFit()
+                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                                    .shadow(radius: 6)
+                            }
+                            #endif
+                            if isRendering { ProgressView() }
+                            if failed && !isRendering {
+                                Text(S.sheetFailed.t).font(.callout).foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: isWide ? max(220, geo.size.height * 0.52) : 340)
+                        .padding(.horizontal)
+
+                        Spacer(minLength: 0)
+
+                        Button { saveSheet() } label: {
+                            Label(saveLabel, systemImage: saveState == .saved ? "checkmark" : "square.and.arrow.down")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(sheetData == nil || saveState == .saving || saveState == .saved)
+                        .padding(.horizontal)
+
+                        if let data = sheetData {
+                            ShareLink(item: shareURL(data)) {
+                                Label(S.share.t, systemImage: "square.and.arrow.up")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                            .padding(.horizontal)
+                        }
                     }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-
-                Text(S.printSheetNote.t)
-                    .font(.caption).foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center).padding(.horizontal)
-
-                ZStack {
-                    #if canImport(UIKit)
-                    if let data = sheetData, let ui = UIImage(data: data) {
-                        Image(uiImage: ui)
-                            .resizable().scaledToFit()
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                            .shadow(radius: 6)
-                    }
-                    #endif
-                    if isRendering { ProgressView() }
-                    if failed && !isRendering {
-                        Text(S.sheetFailed.t).font(.callout).foregroundStyle(.secondary)
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: 340)
-                .padding(.horizontal)
-
-                Spacer(minLength: 0)
-
-                Button { saveSheet() } label: {
-                    Label(saveLabel, systemImage: saveState == .saved ? "checkmark" : "square.and.arrow.down")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(sheetData == nil || saveState == .saving || saveState == .saved)
-                .padding(.horizontal)
-
-                if let data = sheetData {
-                    ShareLink(item: shareURL(data)) {
-                        Label(S.share.t, systemImage: "square.and.arrow.up")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .padding(.horizontal)
+                    .padding(.vertical)
+                    .frame(minHeight: geo.size.height)
                 }
             }
-            .padding(.vertical)
             .navigationTitle(S.printSheet.t)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -4,6 +4,9 @@ import FreeIDCore
 #if canImport(UIKit)
 import UIKit
 #endif
+#if canImport(AVFoundation)
+import AVFoundation
+#endif
 
 /// App-wide state for the capture flow: which spec is selected, the latest live
 /// compliance report from the camera, and the captured/exported result.
@@ -44,10 +47,17 @@ final class CaptureViewModel {
     /// Chosen background color (#RRGGBB). Applied on edit-allowed specs; ignored on strict
     /// ones (which forbid background replacement). Defaults to white.
     var backgroundHex: String = BackgroundChoice.white.hex
-    /// True when the back camera is active (someone else is taking the photo for you).
+    /// True when the back camera is active (someone else is taking the photo for you, or
+    /// you are shooting yourself with the sharper rear lens using voice coach + auto-shutter).
     var usingBackCamera = false
 
     let camera = CameraController()
+    #if canImport(AVFoundation)
+    private let speechSynthesizer = AVSpeechSynthesizer()
+    #endif
+    private var lastSpokenHint: CaptureHint?
+    private var lastSpokenAt: Date = .distantPast
+    private var readySince: Date?
 
     init() {
         let lib = (try? SpecLibrary.bundled()) ?? SpecLibrary(specs: [])
@@ -56,8 +66,51 @@ final class CaptureViewModel {
         self.selectedSpec = lib.spec(id: "cn-1inch") ?? lib.specs.first ?? CaptureViewModel.placeholderSpec
         camera.spec = selectedSpec
         camera.onReport = { [weak self] report in
-            self?.liveReport = report
+            self?.handleLiveReport(report)
         }
+    }
+
+    private func handleLiveReport(_ report: ComplianceReport) {
+        liveReport = report
+        guard usingBackCamera, !showResult, !isCapturing, !isImporting else {
+            readySince = nil
+            return
+        }
+        let hint = liveHint
+        let now = Date()
+        if hint == .ready {
+            if readySince == nil {
+                readySince = now
+                speakIfNeeded(hint: .ready, now: now)
+            } else if let since = readySince, now.timeIntervalSince(since) >= 1.2 {
+                readySince = nil
+                capture()
+            }
+        } else {
+            readySince = nil
+            speakIfNeeded(hint: hint, now: now)
+        }
+    }
+
+    private func speakIfNeeded(hint: CaptureHint, now: Date) {
+        #if canImport(AVFoundation)
+        let interval = (hint == lastSpokenHint) ? 4.0 : 2.2
+        guard now.timeIntervalSince(lastSpokenAt) >= interval, !speechSynthesizer.isSpeaking else { return }
+        let phrase: String
+        switch hint {
+        case .ready:      phrase = S.coachReady.t
+        case .findFace:   phrase = S.coachFindFace.t
+        case .onePerson:  phrase = S.coachOnePerson.t
+        case .straighten: phrase = S.coachStraighten.t
+        case .moveCloser: phrase = S.coachCloser.t
+        case .moveBack:   phrase = S.coachBack.t
+        }
+        let utterance = AVSpeechUtterance(string: phrase)
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        speechSynthesizer.speak(utterance)
+        lastSpokenHint = hint
+        lastSpokenAt = now
+        #endif
     }
 
     /// Background colors offered for GENERAL portrait photos. The white/blue/red trio is the
@@ -93,8 +146,8 @@ final class CaptureViewModel {
     func chooseBackground(_ hex: String) {
         backgroundHex = hex
         guard canChooseBackground, exportedData != nil else { return }
-        let apply: @Sendable (Data?) -> Void = { data in
-            Task { @MainActor [weak self] in if let data { self?.exportedData = data } }
+        let apply: @Sendable (Data?) -> Void = { [weak self] data in
+            Task { @MainActor in if let data { self?.exportedData = data } }
         }
         switch resultSource {
         case .camera:  camera.reexport(backgroundHex: hex, completion: apply)
@@ -128,8 +181,8 @@ final class CaptureViewModel {
         captureError = nil
         importer.load(fileData, spec: selectedSpec,
                       backgroundHex: canChooseBackground ? backgroundHex : nil,
-                      metricsOverride: metricsOverride) { result in
-            Task { @MainActor [weak self] in
+                      metricsOverride: metricsOverride) { [weak self] result in
+            Task { @MainActor in
                 guard let self else { return }
                 self.isImporting = false
                 switch result {
@@ -234,10 +287,18 @@ final class CaptureViewModel {
         }
     }
 
-    /// Flip between the selfie camera and the back camera (for a helper to shoot you).
+    /// Flip between the selfie camera and the back camera (for a helper to shoot you, or
+    /// voice-guided self-shooting).
     func flipCamera() {
         camera.switchCamera()
         usingBackCamera.toggle()
+        readySince = nil
+        lastSpokenHint = nil
+        #if canImport(AVFoundation)
+        if !usingBackCamera && speechSynthesizer.isSpeaking {
+            speechSynthesizer.stopSpeaking(at: .immediate)
+        }
+        #endif
     }
 
     var isLiveCompliant: Bool { liveReport?.isCompliant ?? false }
@@ -283,8 +344,8 @@ final class CaptureViewModel {
         guard !isCapturing else { return }
         isCapturing = true
         captureError = nil
-        camera.captureAndExport(backgroundHex: canChooseBackground ? backgroundHex : nil) { data in
-            Task { @MainActor [weak self] in
+        camera.captureAndExport(backgroundHex: canChooseBackground ? backgroundHex : nil) { [weak self] data in
+            Task { @MainActor in
                 guard let self else { return }
                 self.isCapturing = false
                 if let data {

@@ -110,11 +110,20 @@ private struct HeadGuide: View {
 
     var body: some View {
         GeometryReader { geo in
+            // Reserve top space for the navigation bar + reminder pill, and bottom space for
+            // the coach pill + shutter row, so unfolding an iPhone Duo or rotating to a wide /
+            // short container never lets the guide frame collide with the controls.
+            let topReserved = max(geo.safeAreaInsets.top + 52, geo.size.height * 0.12)
+            let bottomReserved = max(geo.safeAreaInsets.bottom + 148, geo.size.height * 0.24)
+            let availH = max(120, geo.size.height - topReserved - bottomReserved)
+            let availW = max(120, geo.size.width * 0.80)
+
             // The photo frame: the exported photo's proportions (spec aspect ratio).
-            let frameW = min(geo.size.width * 0.80, geo.size.height * 0.62 * spec.aspectRatio)
+            let frameW = min(availW, availH * spec.aspectRatio)
             let frameH = frameW / spec.aspectRatio
+            let centerY = topReserved + availH / 2
             let frame = CGRect(x: (geo.size.width - frameW) / 2,
-                               y: geo.size.height * 0.44 - frameH / 2,
+                               y: centerY - frameH / 2,
                                width: frameW, height: frameH)
 
             // Head sized + placed inside the frame from the spec (head height + eye line).

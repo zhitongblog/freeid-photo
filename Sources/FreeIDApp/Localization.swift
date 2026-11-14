@@ -63,10 +63,10 @@ enum S {
         en: "Fit your head AND shoulders in", ja: "頭と肩を枠に収めて",
         ko: "머리와 어깨를 함께 맞추세요", fr: "Cadrez la tête et les épaules",
         de: "Kopf und Schultern einpassen", it: "Inquadra testa e spalle")
-    static let backCameraHint = Loc8(zh: "后置相机 · 让他人帮你拍", zhTW: "後置相機 · 讓他人幫你拍",
-        en: "Back camera — have someone shoot you", ja: "背面カメラ · 誰かに撮ってもらう",
-        ko: "후면 카메라 · 다른 사람이 찍어 주세요", fr: "Caméra arrière — faites-vous photographier",
-        de: "Rückkamera — lass dich fotografieren", it: "Fotocamera posteriore — fatti scattare la foto")
+    static let backCameraHint = Loc8(zh: "后置相机 · 语音引导与对准自动拍照已开启", zhTW: "後置相機 · 語音引導與對準自動拍照已開啟",
+        en: "Back camera — voice coach & auto-shutter active", ja: "背面カメラ · 音声ガイドと自動シャッター有効",
+        ko: "후면 카메라 · 음성 안내 및 자동 촬영 켜짐", fr: "Caméra arrière — guidage vocal et déclenchement auto",
+        de: "Rückkamera — Sprachführung & Auto-Auslöser aktiv", it: "Fotocamera posteriore — guida vocale e scatto auto")
     static let switchCamera = Loc8(zh: "切换摄像头", zhTW: "切換鏡頭", en: "Switch camera",
         ja: "カメラを切り替え", ko: "카메라 전환", fr: "Changer de caméra",
         de: "Kamera wechseln", it: "Cambia fotocamera")
@@ -127,6 +127,24 @@ enum S {
         de: "Dokument wählen", it: "Scegli documento")
     static let cancel = Loc8(zh: "取消", zhTW: "取消", en: "Cancel", ja: "キャンセル", ko: "취소",
         fr: "Annuler", de: "Abbrechen", it: "Annulla")
+    static let searchSpecs = Loc8(zh: "搜索国家、证件或尺寸 (如 35x45)", zhTW: "搜尋國家、證件或尺寸 (如 35x45)",
+        en: "Search country, document, or size (e.g. 35x45)", ja: "国名・証明書・サイズで検索",
+        ko: "국가, 문서 또는 크기 검색 (예: 35x45)", fr: "Rechercher pays, document ou taille",
+        de: "Land, Dokument oder Größe suchen", it: "Cerca paese, documento o formato")
+    static let customSize = Loc8(zh: "自定义尺寸 (毫米 / 文件大小限制)", zhTW: "自訂尺寸 (公釐 / 檔案大小限制)",
+        en: "Custom size (mm & file size limit)", ja: "カスタムサイズ (mm・ファイル容量上限)",
+        ko: "사용자 지정 크기 (mm 및 파일 크기 제한)", fr: "Taille personnalisée (mm et poids max)",
+        de: "Benutzerdefinierte Größe (mm & Dateigröße)", it: "Formato personalizzato (mm e peso max)")
+    static let widthMM = Loc8(zh: "宽 (mm)", zhTW: "寬 (mm)", en: "Width (mm)", ja: "幅 (mm)",
+        ko: "가로 (mm)", fr: "Largeur (mm)", de: "Breite (mm)", it: "Larghezza (mm)")
+    static let heightMM = Loc8(zh: "高 (mm)", zhTW: "高 (mm)", en: "Height (mm)", ja: "高さ (mm)",
+        ko: "세로 (mm)", fr: "Hauteur (mm)", de: "Höhe (mm)", it: "Altezza (mm)")
+    static let maxKBLabel = Loc8(zh: "最大 KB (选填)", zhTW: "最大 KB (選填)", en: "Max KB (optional)",
+        ja: "最大 KB (任意)", ko: "최대 KB (선택)", fr: "Ko max (optionnel)",
+        de: "Max. KB (optional)", it: "KB max (opz.)")
+    static let useCustomSize = Loc8(zh: "使用该尺寸", zhTW: "使用該尺寸", en: "Use custom size",
+        ja: "このサイズを使う", ko: "이 크기 사용", fr: "Utiliser cette taille",
+        de: "Größe verwenden", it: "Usa questo formato")
 
     // Import from the photo library
     static let choosePhoto = Loc8(zh: "从相册选择", zhTW: "從相簿選擇", en: "Choose photo",
@@ -244,6 +262,7 @@ enum SpecText {
         case "JP": return Loc8(zh: "日本", zhTW: "日本", en: "Japan", ja: "日本", ko: "일본", fr: "Japon", de: "Japan", it: "Giappone")
         case "SG": return Loc8(zh: "新加坡", zhTW: "新加坡", en: "Singapore", ja: "シンガポール", ko: "싱가포르", fr: "Singapour", de: "Singapur", it: "Singapore")
         case "EU": return Loc8(zh: "申根", zhTW: "申根", en: "Schengen", ja: "シェンゲン", ko: "솅겐", fr: "Schengen", de: "Schengen", it: "Schengen")
+        case "CUSTOM": return Loc8(zh: "自定义", zhTW: "自訂", en: "Custom", ja: "カスタム", ko: "사용자 지정", fr: "Personnalisé", de: "Benutzerdefiniert", it: "Personalizzato")
         default: return Loc8(zh: code, zhTW: code, en: code, ja: code, ko: code, fr: code, de: code, it: code)
         }
     }

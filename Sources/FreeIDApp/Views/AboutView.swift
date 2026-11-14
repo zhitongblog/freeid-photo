@@ -87,37 +87,42 @@ struct AboutView: View {
                                startPoint: .top, endPoint: .bottom)
                     .ignoresSafeArea()
 
-                VStack(spacing: 16) {
-                    Spacer()
-                    BrandWordmark(size: 56, base: .white)
-                    Text(Brand.slogan.t)
-                        .font(.title2.weight(.bold)).foregroundStyle(Brand.gradient)
-                        .multilineTextAlignment(.center).padding(.horizontal, 24)
-                    Text(Brand.subSlogan.t)
-                        .font(.subheadline).foregroundStyle(.white.opacity(0.85))
-                        .multilineTextAlignment(.center).padding(.horizontal, 28)
-                    Text(Brand.tagline.t)
-                        .font(.footnote).foregroundStyle(.white.opacity(0.6))
-                        .multilineTextAlignment(.center)
-                    Text(Brand.about.t)
-                        .font(.footnote).foregroundStyle(.white.opacity(0.55))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32).padding(.top, 8)
-                    Spacer()
+                GeometryReader { geo in
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            Spacer(minLength: 16)
+                            BrandWordmark(size: 56, base: .white)
+                            Text(Brand.slogan.t)
+                                .font(.title2.weight(.bold)).foregroundStyle(Brand.gradient)
+                                .multilineTextAlignment(.center).padding(.horizontal, 24)
+                            Text(Brand.subSlogan.t)
+                                .font(.subheadline).foregroundStyle(.white.opacity(0.85))
+                                .multilineTextAlignment(.center).padding(.horizontal, 28)
+                            Text(Brand.tagline.t)
+                                .font(.footnote).foregroundStyle(.white.opacity(0.6))
+                                .multilineTextAlignment(.center)
+                            Text(Brand.about.t)
+                                .font(.footnote).foregroundStyle(.white.opacity(0.55))
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 32).padding(.top, 8)
+                            Spacer(minLength: 16)
 
-                    Link(destination: Brand.url) {
-                        Label(Brand.visit.t, systemImage: "safari.fill")
-                            .font(.headline).foregroundStyle(.white)
-                            .frame(maxWidth: .infinity).padding(.vertical, 14)
-                            .background(Brand.gradient, in: RoundedRectangle(cornerRadius: 14))
-                    }
-                    .padding(.horizontal)
+                            Link(destination: Brand.url) {
+                                Label(Brand.visit.t, systemImage: "safari.fill")
+                                    .font(.headline).foregroundStyle(.white)
+                                    .frame(maxWidth: .infinity).padding(.vertical, 14)
+                                    .background(Brand.gradient, in: RoundedRectangle(cornerRadius: 14))
+                            }
+                            .padding(.horizontal)
 
-                    Link(destination: Brand.xURL) {
-                        Text(Brand.followX.t)
-                            .font(.subheadline).foregroundStyle(.white.opacity(0.8))
+                            Link(destination: Brand.xURL) {
+                                Text(Brand.followX.t)
+                                    .font(.subheadline).foregroundStyle(.white.opacity(0.8))
+                            }
+                            .padding(.bottom, 18)
+                        }
+                        .frame(minHeight: geo.size.height)
                     }
-                    .padding(.bottom, 18)
                 }
             }
             .navigationTitle(Brand.aboutTitle.t)

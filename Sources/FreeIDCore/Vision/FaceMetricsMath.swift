@@ -40,6 +40,9 @@ public enum FaceMetricsMath {
         public var glareOnGlasses: Bool
         public var brightness: Double
         public var neutralExpression: Bool
+        /// Optional top-of-head Y in Vision bottom-left coords (0..1) measured from the
+        /// person-segmentation mask. When nil, estimated from `faceBoundingBox` + `crownHairPad`.
+        public var measuredCrownVisionY: Double?
 
         public init(
             faceCount: Int, imageWidth: Int, imageHeight: Int, faceBoundingBox: NormRect,
@@ -48,7 +51,7 @@ public enum FaceMetricsMath {
             eyeAspectRatio: Double, lipGapRatio: Double,
             backgroundUniformity: Double, backgroundMeanHex: String,
             glassesDetected: Bool, glareOnGlasses: Bool, brightness: Double,
-            neutralExpression: Bool
+            neutralExpression: Bool, measuredCrownVisionY: Double? = nil
         ) {
             self.faceCount = faceCount; self.imageWidth = imageWidth; self.imageHeight = imageHeight
             self.faceBoundingBox = faceBoundingBox; self.chinVisionY = chinVisionY
@@ -58,6 +61,7 @@ public enum FaceMetricsMath {
             self.backgroundUniformity = backgroundUniformity; self.backgroundMeanHex = backgroundMeanHex
             self.glassesDetected = glassesDetected; self.glareOnGlasses = glareOnGlasses
             self.brightness = brightness; self.neutralExpression = neutralExpression
+            self.measuredCrownVisionY = measuredCrownVisionY
         }
     }
 
@@ -67,19 +71,27 @@ public enum FaceMetricsMath {
         public var eyeOpen: Double = 0.18
         /// Lip-gap ratio at/below which the mouth counts as closed.
         public var mouthClosed: Double = 0.12
-        /// Fraction of the face-box height added above the box to estimate the hairline/crown.
-        /// Vision's face box stops near the eyebrows/forehead; the true top of the head (hair)
-        /// sits well above it, so this must be generous or the crop measures the head too short
-        /// and ends up cutting the crown / leaving no margin. Calibrated on real photos.
+        /// Fraction of the face-box height added above the box to estimate the hairline/crown
+        /// when no segmentation mask is available.
         public var crownHairPad: Double = 0.25
+        /// Allowed range (as a multiple of face-box height above `boxTopVisionY`) when clamping
+        /// a segmentation-measured crown so stray mask noise or a raised hand can't skew framing.
+        public var minCrownHairPad: Double = 0.12
+        public var maxCrownHairPad: Double = 0.55
         public init() {}
     }
 
     public static func build(_ v: Inputs, thresholds t: Thresholds = .init()) -> FaceMetrics {
-        // Vision's face box stops around the hairline; add a small pad to estimate the
-        // crown (top of head/hair). Approximate by design — calibrated on real photos.
         let boxTopVisionY = v.faceBoundingBox.y + v.faceBoundingBox.h
-        let crownVisionY = min(1.0, boxTopVisionY + v.faceBoundingBox.h * t.crownHairPad)
+        let rawCrownVisionY: Double
+        if let measured = v.measuredCrownVisionY {
+            let minCrown = boxTopVisionY + v.faceBoundingBox.h * t.minCrownHairPad
+            let maxCrown = boxTopVisionY + v.faceBoundingBox.h * t.maxCrownHairPad
+            rawCrownVisionY = Swift.min(maxCrown, Swift.max(minCrown, measured))
+        } else {
+            rawCrownVisionY = boxTopVisionY + v.faceBoundingBox.h * t.crownHairPad
+        }
+        let crownVisionY = min(1.0, rawCrownVisionY)
 
         let crownY = 1.0 - crownVisionY
         let chinY = 1.0 - v.chinVisionY

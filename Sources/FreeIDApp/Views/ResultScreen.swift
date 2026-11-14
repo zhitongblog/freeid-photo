@@ -20,78 +20,49 @@ struct ResultScreen: View {
     /// The spec's required background color name, localized, e.g. "白色" / "white".
     private var bgName: String { SpecText.colorName(spec.background.hex) }
 
+    private var specMetadataSummary: String {
+        var parts = [
+            SpecText.name(spec),
+            "\(spec.pixelWidth)×\(spec.pixelHeight)px",
+            "\(spec.dpi)dpi",
+        ]
+        if let bytes = imageData?.count, bytes > 0 {
+            parts.append("\(max(1, (bytes + 512) / 1024)) KB")
+        }
+        return parts.joined(separator: " · ")
+    }
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                Spacer(minLength: 8)
-                #if canImport(UIKit)
-                if let data = imageData, let ui = UIImage(data: data) {
-                    Image(uiImage: ui)
-                        .resizable().scaledToFit()
-                        .frame(maxHeight: 360)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .shadow(radius: 8)
-                }
-                #endif
-                // Don't claim "ready to use" over a list of unmet requirements — the card
-                // below says what's wrong, so the headline stays honest and steps aside.
-                if model.importIssues.isEmpty {
-                    Label(S.readyToUse.t, systemImage: "checkmark.seal.fill")
-                        .font(.headline).foregroundStyle(.green)
-                }
-                Text("\(SpecText.name(spec)) · \(spec.pixelWidth)×\(spec.pixelHeight)px · \(spec.dpi)dpi")
-                    .font(.caption).foregroundStyle(.secondary)
-
-                if !model.importIssues.isEmpty { issuesCard }
-
-                if model.canChooseBackground {
-                    backgroundPicker
-                } else if model.backgroundLockedToSpec {
-                    // Editable official doc: background was set to the REQUIRED color, not a choice.
-                    Label(String(format: S.requiredBgNote.t, bgName), systemImage: "checkmark.circle")
-                        .font(.caption).foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center).padding(.horizontal)
-                } else {
-                    Label(String(format: S.strictBgWarning.t, bgName), systemImage: "exclamationmark.shield")
-                        .font(.caption).foregroundStyle(.orange)
-                        .multilineTextAlignment(.center).padding(.horizontal)
-                }
-
-                Spacer(minLength: 8)
-                saveButton
-                HStack(spacing: 12) {
-                    Button { dismiss() } label: {
-                        Label(S.retake.t, systemImage: "arrow.counterclockwise")
+            GeometryReader { geo in
+                let isWide = geo.size.width > 560 && geo.size.width > geo.size.height * 0.85
+                Group {
+                    if isWide {
+                        HStack(alignment: .center, spacing: 28) {
+                            photoPreview(maxHeight: max(200, geo.size.height - 48))
+                                .frame(maxWidth: geo.size.width * 0.46)
+                            ScrollView {
+                                VStack(spacing: 16) {
+                                    detailsSection
+                                    actionsSection
+                                }
+                                .padding(.vertical, 16)
+                            }
                             .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    if let data = imageData {
-                        ShareLink(item: shareURL(data)) {
-                            Label(S.share.t, systemImage: "square.and.arrow.up")
-                                .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.bordered)
+                        .padding(.horizontal, 24)
+                    } else {
+                        ScrollView {
+                            VStack(spacing: 16) {
+                                photoPreview(maxHeight: min(360, max(200, geo.size.height * 0.45)))
+                                    .padding(.top, 8)
+                                detailsSection
+                                actionsSection
+                            }
+                            .frame(minHeight: geo.size.height)
+                        }
                     }
                 }
-                .padding(.horizontal)
-
-                Button { showingPrintSheet = true } label: {
-                    Label(S.printSheet.t, systemImage: "printer")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .disabled(imageData == nil)
-                .padding(.horizontal)
-
-                Link(destination: Brand.url) {
-                    HStack(spacing: 0) {
-                        Text(Brand.creditPrefix.t)
-                        BrandWordmark(size: 13)
-                        Text(Brand.creditSuffix.t)
-                    }
-                    .font(.caption2).foregroundStyle(.secondary)
-                }
-                .padding(.bottom, 8)
             }
             .navigationTitle(S.yourPhoto.t)
             .navigationBarTitleDisplayMode(.inline)
@@ -110,6 +81,87 @@ struct ResultScreen: View {
                 }
             }
             #endif
+        }
+    }
+
+    @ViewBuilder
+    private func photoPreview(maxHeight: CGFloat) -> some View {
+        #if canImport(UIKit)
+        if let data = imageData, let ui = UIImage(data: data) {
+            Image(uiImage: ui)
+                .resizable().scaledToFit()
+                .frame(maxHeight: maxHeight)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .shadow(radius: 8)
+        }
+        #endif
+    }
+
+    @ViewBuilder
+    private var detailsSection: some View {
+        // Don't claim "ready to use" over a list of unmet requirements — the card
+        // below says what's wrong, so the headline stays honest and steps aside.
+        if model.importIssues.isEmpty {
+            Label(S.readyToUse.t, systemImage: "checkmark.seal.fill")
+                .font(.headline).foregroundStyle(.green)
+        }
+        Text(specMetadataSummary)
+            .font(.caption).foregroundStyle(.secondary)
+
+        if !model.importIssues.isEmpty { issuesCard }
+
+        if model.canChooseBackground {
+            backgroundPicker
+        } else if model.backgroundLockedToSpec {
+            // Editable official doc: background was set to the REQUIRED color, not a choice.
+            Label(String(format: S.requiredBgNote.t, bgName), systemImage: "checkmark.circle")
+                .font(.caption).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center).padding(.horizontal)
+        } else {
+            Label(String(format: S.strictBgWarning.t, bgName), systemImage: "exclamationmark.shield")
+                .font(.caption).foregroundStyle(.orange)
+                .multilineTextAlignment(.center).padding(.horizontal)
+        }
+    }
+
+    @ViewBuilder
+    private var actionsSection: some View {
+        VStack(spacing: 12) {
+            saveButton
+            HStack(spacing: 12) {
+                Button { dismiss() } label: {
+                    Label(S.retake.t, systemImage: "arrow.counterclockwise")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                if let data = imageData {
+                    ShareLink(item: shareURL(data)) {
+                        Label(S.share.t, systemImage: "square.and.arrow.up")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+            .padding(.horizontal)
+
+            Button { showingPrintSheet = true } label: {
+                Label(S.printSheet.t, systemImage: "printer")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .disabled(imageData == nil)
+            .padding(.horizontal)
+
+            Link(destination: Brand.url) {
+                HStack(spacing: 0) {
+                    Text(Brand.creditPrefix.t)
+                    BrandWordmark(size: 13)
+                    Text(Brand.creditSuffix.t)
+                }
+                .font(.caption2).foregroundStyle(.secondary)
+            }
+            .padding(.top, 4)
+            .padding(.bottom, 8)
         }
     }
 

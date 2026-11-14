@@ -60,6 +60,39 @@ public struct PhotoSpec: Codable, Sendable, Identifiable, Equatable {
     public var pixelHeight: Int { Int((outputSize.heightMM / 25.4 * Double(dpi)).rounded()) }
     /// width / height — the crop aspect ratio the camera framing must match.
     public var aspectRatio: Double { outputSize.widthMM / outputSize.heightMM }
+
+    /// Build a custom-sized ID-photo spec (in millimetres) with standard ICAO head/eye
+    /// proportions and optional digital file-size limits (in KB).
+    public static func custom(
+        widthMM: Double, heightMM: Double, dpi: Int = 300,
+        backgroundHex: String = "#FFFFFF",
+        minKB: Int? = nil, maxKB: Int? = nil
+    ) -> PhotoSpec {
+        let w = max(10, widthMM)
+        let h = max(10, heightMM)
+        let fileSpec: FileSpec? = (minKB != nil || maxKB != nil)
+            ? FileSpec(pixelWidth: nil, pixelHeight: nil, minKB: minKB, maxKB: maxKB, format: "JPEG")
+            : nil
+        return PhotoSpec(
+            id: "custom-\(Int(w))x\(Int(h))",
+            country: "CUSTOM",
+            docType: .general,
+            displayName: LocalizedText(en: "Custom \(Int(w))×\(Int(h))mm", zh: "自定义 \(Int(w))×\(Int(h))mm"),
+            outputSize: PhysicalSize(widthMM: w, heightMM: h),
+            dpi: dpi,
+            headHeight: RangeMM(min: (h * 0.58 * 10).rounded() / 10, max: (h * 0.69 * 10).rounded() / 10),
+            eyeLineFromBottom: RangeMM(min: (h * 0.55 * 10).rounded() / 10, max: (h * 0.62 * 10).rounded() / 10),
+            background: BackgroundRule(
+                name: LocalizedText(en: "White", zh: "白色"),
+                hex: backgroundHex, toleranceDeltaE: 12, minUniformity: 0.85),
+            digitalEditPolicy: .allowed,
+            expression: ExpressionRule(neutral: true, mouthClosed: true, eyesOpen: true),
+            glasses: .allowedNoGlare,
+            fileSpec: fileSpec,
+            officialSourceURL: "",
+            lastVerified: ""
+        )
+    }
 }
 
 public enum DocType: String, Codable, Sendable, CaseIterable {

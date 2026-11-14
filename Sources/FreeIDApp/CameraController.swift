@@ -16,10 +16,10 @@ import ImageIO
 ///   live:    AVCaptureVideoDataOutput ─(every Nth frame)→ engine → SpecValidator → onReport
 ///   capture: AVCapturePhotoOutput ─→ engine.metrics → ExportPipeline.export → JPEG Data
 ///
-/// Capture work stays on the camera queue; only Sendable `Data` crosses back to the UI,
+///Capture work stays on the camera queue; only Sendable `Data` crosses back to the UI,
 /// so it's clean under Swift 6 concurrency. On the Simulator there is no camera, so the
 /// app still builds and renders; capture/preview are verified on a real device.
-final class CameraController: NSObject {
+final class CameraController: NSObject, @unchecked Sendable {
 
     var spec: PhotoSpec?
     var onReport: (@MainActor (ComplianceReport) -> Void)?
@@ -37,9 +37,12 @@ final class CameraController: NSObject {
     private var configured = false
     private var captureCompletion: (@Sendable (Data?) -> Void)?
     private var captureDevice: AVCaptureDevice?
-    /// Tracks the physical orientation so we can deliver upright frames/photos. Knows the
-    /// front-camera mounting (which a hardcoded 90° gets wrong), so the still isn't sideways.
-    private var rotationCoordinator: Any?
+    private weak var previewLayer: AVCaptureVideoPreviewLayer?
+    /// Tracks the physical orientation so we can deliver upright frames/photos and keep the
+    /// live preview horizon-level across rotations and foldable (iPhone Duo) display transitions.
+    private var rotationCoordinator: AVCaptureDevice.RotationCoordinator?
+    private var previewRotationObservation: NSKeyValueObservation?
+    private var captureRotationObservation: NSKeyValueObservation?
     /// Front for selfies, back when someone else takes the photo for you (sharper lens).
     private(set) var cameraPosition: AVCaptureDevice.Position = .front
     /// Background color (#RRGGBB) to composite behind the subject; nil = the spec's default.
@@ -49,13 +52,20 @@ final class CameraController: NSObject {
     private var lastSource: CGImage?
     private var lastMetrics: FaceMetrics?
 
+    func attachPreviewLayer(_ layer: AVCaptureVideoPreviewLayer) {
+        previewLayer = layer
+        queue.async {
+            self.rebuildRotationCoordinator()
+        }
+    }
+
     func start() {
         AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
             guard granted, let self else { return }
             self.queue.async {
                 self.configureIfNeeded()
                 self.session.startRunning()
-                self.applyRotation(to: self.videoOutput.connection(with: .video))
+                self.rebuildRotationCoordinator()
             }
         }
     }
@@ -116,10 +126,7 @@ final class CameraController: NSObject {
             self.cameraPosition = (self.cameraPosition == .front) ? .back : .front
             self.addCameraInput(position: self.cameraPosition)
             self.session.commitConfiguration()
-            if #available(iOS 17.0, *), let device = self.captureDevice {
-                self.rotationCoordinator = AVCaptureDevice.RotationCoordinator(device: device, previewLayer: nil)
-            }
-            self.applyRotation(to: self.videoOutput.connection(with: .video))
+            self.rebuildRotationCoordinator()
         }
     }
 
@@ -143,11 +150,28 @@ final class CameraController: NSObject {
         if session.canAddOutput(videoOutput) { session.addOutput(videoOutput) }
         if session.canAddOutput(photoOutput) { session.addOutput(photoOutput) }
         session.commitConfiguration()
+        rebuildRotationCoordinator()
+    }
 
-        // Connections exist only after the outputs are committed. The coordinator computes the
-        // correct rotation for THIS camera (front) and orientation — applied per capture below.
-        if #available(iOS 17.0, *), let device = captureDevice {
-            rotationCoordinator = AVCaptureDevice.RotationCoordinator(device: device, previewLayer: nil)
+    /// Rebuild `AVCaptureDevice.RotationCoordinator` bound to the active device and preview
+    /// layer, and observe both preview and capture rotation angles so unfolding/rotating an
+    /// iPhone Duo (or switching displays/postures) keeps the preview and video feed upright.
+    private func rebuildRotationCoordinator() {
+        guard let device = captureDevice else { return }
+        let coord = AVCaptureDevice.RotationCoordinator(device: device, previewLayer: previewLayer)
+        rotationCoordinator = coord
+
+        applyPreviewRotation(coord.videoRotationAngleForHorizonLevelPreview)
+        applyCaptureRotation(coord.videoRotationAngleForHorizonLevelCapture)
+
+        previewRotationObservation = coord.observe(\.videoRotationAngleForHorizonLevelPreview, options: [.new]) { [weak self] coord, _ in
+            let angle = coord.videoRotationAngleForHorizonLevelPreview
+            self?.applyPreviewRotation(angle)
+        }
+        captureRotationObservation = coord.observe(\.videoRotationAngleForHorizonLevelCapture, options: [.new]) { [weak self] coord, _ in
+            guard let self else { return }
+            let angle = coord.videoRotationAngleForHorizonLevelCapture
+            self.queue.async { self.applyCaptureRotation(angle) }
         }
     }
 
@@ -159,17 +183,27 @@ final class CameraController: NSObject {
         guard let out = try? pipeline.export(image: cg, spec: spec, metrics: metrics, options: opts) else {
             return nil
         }
-        return try? pipeline.jpegData(out, dpi: spec.dpi)
+        return try? pipeline.jpegData(out, spec: spec)
+    }
+
+    private func applyPreviewRotation(_ angle: CGFloat) {
+        DispatchQueue.main.async { [weak self] in
+            guard let conn = self?.previewLayer?.connection, conn.isVideoRotationAngleSupported(angle) else { return }
+            conn.videoRotationAngle = angle
+        }
+    }
+
+    private func applyCaptureRotation(_ angle: CGFloat) {
+        if let conn = videoOutput.connection(with: .video), conn.isVideoRotationAngleSupported(angle) {
+            conn.videoRotationAngle = angle
+        }
     }
 
     /// Set a connection's rotation to keep video/photo upright for the current orientation.
     private func applyRotation(to connection: AVCaptureConnection?) {
-        guard let connection else { return }
-        if #available(iOS 17.0, *),
-           let coord = rotationCoordinator as? AVCaptureDevice.RotationCoordinator {
-            let angle = coord.videoRotationAngleForHorizonLevelCapture
-            if connection.isVideoRotationAngleSupported(angle) { connection.videoRotationAngle = angle }
-        }
+        guard let connection, let coord = rotationCoordinator else { return }
+        let angle = coord.videoRotationAngleForHorizonLevelCapture
+        if connection.isVideoRotationAngleSupported(angle) { connection.videoRotationAngle = angle }
     }
     #else
     var cameraPosition: Int { 0 }

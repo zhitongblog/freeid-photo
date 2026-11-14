@@ -80,6 +80,7 @@ public struct VisionComplianceEngine: Sendable {
         let rightEye = eyeCenter(lm?.rightPupil, fallback: lm?.rightEye, in: box)
             ?? FaceMetricsMath.NormPoint(x: box.midX, y: box.midY)
         let chinVisionY = lowestContourY(lm?.faceContour, in: box) ?? box.minY
+        let measuredCrown = measureCrownVisionY(mask: mask, faceBox: box)
 
         let inputs = FaceMetricsMath.Inputs(
             faceCount: faces.count,
@@ -92,12 +93,45 @@ public struct VisionComplianceEngine: Sendable {
             lipGapRatio: lipGapRatio(lm?.innerLips, box: box),
             backgroundUniformity: bg.uniformity, backgroundMeanHex: bg.hex,
             glassesDetected: false, glareOnGlasses: false,
-            brightness: brightness, neutralExpression: true)
+            brightness: brightness, neutralExpression: true,
+            measuredCrownVisionY: measuredCrown)
 
         return FaceMetricsMath.build(inputs)
     }
 
     // MARK: - Vision helpers
+
+    /// Scan the person-segmentation mask within the central horizontal band of the face box
+    /// from the top of the image downward to locate the true top of the hair/crown.
+    /// Returns a Vision bottom-left Y coordinate (0..1), or nil if no mask is available.
+    private func measureCrownVisionY(mask: CVPixelBuffer?, faceBox box: CGRect) -> Double? {
+        guard let mask else { return nil }
+        let reader = MaskReader(mask)
+        reader.lock(); defer { reader.unlock() }
+        // Sample the middle 60% of the face width so stray shoulder/background artifacts at
+        // the far edges don't register as the crown.
+        let minU = Double(box.minX + box.width * 0.20)
+        let maxU = Double(box.maxX - box.width * 0.20)
+        guard maxU > minU else { return nil }
+        let maxV = max(0.0, 1.0 - Double(box.maxY)) // stop at the top of the Vision face box
+        let stepsV = 120
+        let stepsU = 9
+        for iv in 0...stepsV {
+            let v = Double(iv) / Double(stepsV) * maxV
+            var hits = 0
+            for iu in 0..<stepsU {
+                let u = minU + (maxU - minU) * Double(iu) / Double(stepsU - 1)
+                if reader.sample(u: u, v: v) >= 0.55 {
+                    hits += 1
+                }
+            }
+            // Require at least 2 sample columns to agree so a single noisy pixel doesn't trigger.
+            if hits >= 2 {
+                return 1.0 - v
+            }
+        }
+        return nil
+    }
 
     private func largestFace(_ faces: [VNFaceObservation]) -> VNFaceObservation? {
         faces.max { a, b in (a.boundingBox.width * a.boundingBox.height) < (b.boundingBox.width * b.boundingBox.height) }

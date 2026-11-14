@@ -141,10 +141,12 @@ func callTool(name: String, args: [String: Any]) -> (text: String, isError: Bool
                 outImage = sheet.image
                 note = " (\(sheet.copies) copies on \(paperName))"
             }
+            let isSheet = args["paper"] != nil
             let data = (out as NSString).pathExtension.lowercased() == "png"
-                ? try pipeline.pngData(outImage) : try pipeline.jpegData(outImage, dpi: spec.dpi)
+                ? try pipeline.pngData(outImage)
+                : (isSheet ? try pipeline.jpegData(outImage, dpi: spec.dpi) : try pipeline.jpegData(outImage, spec: spec))
             try data.write(to: URL(fileURLWithPath: out))
-            return ("wrote \(outImage.width)x\(outImage.height)px @\(spec.dpi)dpi to \(out)\(note)", false)
+            return ("wrote \(outImage.width)x\(outImage.height)px @\(spec.dpi)dpi (\(data.count / 1024)KB) to \(out)\(note)", false)
         } catch { return ("export failed: \(error)", true) }
         #else
         return ("export unavailable on this platform", true)
