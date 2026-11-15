@@ -11,6 +11,7 @@ struct CameraScreen: View {
     @Binding var showingSpecPicker: Bool
     /// The photo picked from the library, if the user went that route instead of shooting.
     @State private var pickedItem: PhotosPickerItem?
+    @State private var showingHistory = false
 
     var body: some View {
         ZStack {
@@ -48,13 +49,26 @@ struct CameraScreen: View {
                         model.capture()
                     }
                     HStack {
-                        // Not everyone can be shot live — a baby won't hold a pose, and plenty
-                        // of people already have the photo they want to use.
-                        PhotosPicker(selection: $pickedItem, matching: .images,
-                                     photoLibrary: .shared()) {
-                            LibraryButtonLabel()
+                        HStack(spacing: 12) {
+                            // Not everyone can be shot live — a baby won't hold a pose, and plenty
+                            // of people already have the photo they want to use.
+                            PhotosPicker(selection: $pickedItem, matching: .images,
+                                         photoLibrary: .shared()) {
+                                LibraryButtonLabel()
+                            }
+                            if !model.historyEntries.isEmpty {
+                                Button {
+                                    showingHistory = true
+                                } label: {
+                                    Image(systemName: "clock.arrow.circlepath")
+                                        .font(.title3).foregroundStyle(.white)
+                                        .frame(width: 44, height: 44)
+                                        .background(.black.opacity(0.45), in: Circle())
+                                }
+                                .accessibilityLabel(S.historyTitle.t)
+                            }
                         }
-                        .padding(.leading, 36)
+                        .padding(.leading, 24)
                         Spacer()
                         FlipCameraButton { model.flipCamera() }
                             .padding(.trailing, 36)
@@ -90,6 +104,9 @@ struct CameraScreen: View {
         .onDisappear { model.camera.stop() }
         .fullScreenCover(isPresented: $model.showResult) {
             ResultScreen(model: model)
+        }
+        .sheet(isPresented: $showingHistory) {
+            HistorySheetView(model: model)
         }
         .alert(S.captureFailedTitle.t, isPresented: .init(
             get: { model.captureError != nil },

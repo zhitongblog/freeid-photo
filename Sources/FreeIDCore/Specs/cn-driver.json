@@ -1,0 +1,22 @@
+{
+  "id": "cn-driver",
+  "country": "CN",
+  "docType": "driverLicense",
+  "displayName": { "en": "China Driver License", "zh": "中国机动车驾驶证" },
+  "outputSize": { "widthMM": 22, "heightMM": 32 },
+  "dpi": 300,
+  "headHeight": { "min": 19, "max": 22.5 },
+  "eyeLineFromBottom": { "min": 15, "max": 20 },
+  "background": {
+    "name": { "en": "White", "zh": "白色" },
+    "hex": "#FFFFFF",
+    "toleranceDeltaE": 12,
+    "minUniformity": 0.88
+  },
+  "digitalEditPolicy": "allowed",
+  "expression": { "neutral": true, "mouthClosed": true, "eyesOpen": true },
+  "glasses": "allowedNoGlare",
+  "fileSpec": { "pixelWidth": 260, "pixelHeight": 378, "minKB": 15, "maxKB": 100, "format": "jpeg" },
+  "officialSourceURL": "https://www.mps.gov.cn/",
+  "lastVerified": "2026-11-15"
+}

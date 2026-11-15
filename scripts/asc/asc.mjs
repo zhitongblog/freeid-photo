@@ -25,8 +25,13 @@ export function token() {
 }
 
 let JWT = token();
-/** Call the ASC API. Throws on HTTP >= 300 with the first error detail. */
+let JWT_AT = Date.now();
+/** Call the ASC API. Auto-refreshes JWT before expiry; throws on HTTP >= 300. */
 export async function api(method, path, body) {
+  if (Date.now() - JWT_AT > 14 * 60 * 1000) {
+    JWT = token();
+    JWT_AT = Date.now();
+  }
   const r = await fetch('https://api.appstoreconnect.apple.com' + path, {
     method,
     headers: { Authorization: `Bearer ${JWT}`, 'Content-Type': 'application/json' },

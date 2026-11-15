@@ -1,0 +1,22 @@
+{
+  "id": "hk-passport",
+  "country": "HK",
+  "docType": "passport",
+  "displayName": { "en": "Hong Kong SAR Passport", "zh": "中国香港特区护照 / 回乡证" },
+  "outputSize": { "widthMM": 40, "heightMM": 50 },
+  "dpi": 300,
+  "headHeight": { "min": 32, "max": 36 },
+  "eyeLineFromBottom": { "min": 26, "max": 33 },
+  "background": {
+    "name": { "en": "White", "zh": "纯白色" },
+    "hex": "#FFFFFF",
+    "toleranceDeltaE": 12,
+    "minUniformity": 0.88
+  },
+  "digitalEditPolicy": "allowed",
+  "expression": { "neutral": true, "mouthClosed": true, "eyesOpen": true },
+  "glasses": "forbidden",
+  "fileSpec": { "pixelWidth": 472, "pixelHeight": 591, "minKB": 30, "maxKB": 1024, "format": "jpeg" },
+  "officialSourceURL": "https://www.immd.gov.hk/eng/residents/immigration/traveldoc/photorequirements.html",
+  "lastVerified": "2026-11-15"
+}

@@ -1,0 +1,22 @@
+{
+  "id": "tw-passport",
+  "country": "TW",
+  "docType": "passport",
+  "displayName": { "en": "Taiwan Passport / Entry Permit", "zh": "中国台湾护照 / 入台证" },
+  "outputSize": { "widthMM": 35, "heightMM": 45 },
+  "dpi": 300,
+  "headHeight": { "min": 32, "max": 36 },
+  "eyeLineFromBottom": { "min": 24, "max": 31 },
+  "background": {
+    "name": { "en": "White", "zh": "白色" },
+    "hex": "#FFFFFF",
+    "toleranceDeltaE": 12,
+    "minUniformity": 0.88
+  },
+  "digitalEditPolicy": "allowed",
+  "expression": { "neutral": true, "mouthClosed": true, "eyesOpen": true },
+  "glasses": "forbidden",
+  "fileSpec": null,
+  "officialSourceURL": "https://www.boca.gov.tw/",
+  "lastVerified": "2026-11-15"
+}

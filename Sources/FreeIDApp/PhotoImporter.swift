@@ -7,30 +7,24 @@ import CoreImage
 import CoreGraphics
 #endif
 
-/// Turns a photo the user already has into a spec-sized export.
-///
-/// Mirrors `CameraController`'s still-capture path — upright decode → Vision metrics →
-/// `ExportPipeline` — but starts from image bytes instead of the sensor. That covers the
-/// cases the viewfinder can't: a baby who won't sit for a live capture, a shot a friend
-/// took, a photo already in the camera roll.
-///
-/// Work runs on a private serial queue and only Sendable values cross back, matching the
-/// concurrency shape of `CameraController`.
+/// Turns a photo the user already has (from Photo Library or local History) into a spec-sized
+/// export, and re-exports on demand when the user switches spec, background color, or retouch
+/// sliders on the result screen.
 final class PhotoImporter: @unchecked Sendable {
 
-    /// What an import produced: the finished photo, plus an honest verdict on it.
     struct Outcome: Sendable {
         /// The spec-sized JPEG, ready to save or share.
         let data: Data
+        /// Upright source JPEG suitable for persisting in `PhotoHistoryStore`.
+        let sourceJPEG: Data
+        /// Raw full-frame measurements of the source image.
+        let metrics: FaceMetrics
         /// How the result measures up, evaluated through the crop the export applied.
         let report: ComplianceReport
     }
 
     enum ImportError: Error, Sendable {
-        /// The bytes aren't an image we can decode.
         case decodeFailed
-        /// Decoded fine, but Vision couldn't analyze it. Carries the underlying reason —
-        /// the two look identical to the user but are very different to debug.
         case analysisFailed(String)
         case noFace
         case multipleFaces
@@ -43,29 +37,39 @@ final class PhotoImporter: @unchecked Sendable {
     private let pipeline = ExportPipeline()
     private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
 
-    /// The imported source and its measurements, kept so the result screen can switch
-    /// background color without making the user pick the photo again.
     private var lastSource: CGImage?
     private var lastMetrics: FaceMetrics?
-    private var lastSpec: PhotoSpec?
 
-    /// Decode `fileData`, measure the face, and export it to `spec`.
-    ///
-    /// `metricsOverride` substitutes measurements instead of running Vision — used only by the
-    /// DEBUG launch hook, so the export/validation/result path can be driven where Vision is
-    /// unavailable (the Simulator reports "E5RT is not supported").
-    func load(_ fileData: Data, spec: PhotoSpec, backgroundHex: String?,
-              metricsOverride: FaceMetrics? = nil,
-              completion: @escaping @Sendable (Result<Outcome, ImportError>) -> Void) {
+    func load(
+        _ fileData: Data,
+        spec: PhotoSpec,
+        backgroundHex: String?,
+        brightnessBoost: Double = 0,
+        skinSmoothing: Double = 0,
+        metricsOverride: FaceMetrics? = nil,
+        completion: @escaping @Sendable (Result<Outcome, ImportError>) -> Void
+    ) {
         queue.async { [self] in
-            // Must go through ImageLoading: a portrait photo stores landscape pixels plus an
-            // EXIF orientation tag, and measuring the raw pixels would export it sideways.
             guard let cg = ImageLoading.uprightCGImage(from: fileData, context: ciContext) else {
                 completion(.failure(.decodeFailed)); return
             }
             let metrics: FaceMetrics
             if let metricsOverride {
-                metrics = metricsOverride
+                // Reconcile dimensions in case the stored JPEG was downscaled for history.
+                metrics = FaceMetrics(
+                    imageWidth: cg.width, imageHeight: cg.height, faceCount: metricsOverride.faceCount,
+                    crownY: metricsOverride.crownY, chinY: metricsOverride.chinY,
+                    eyeLineY: metricsOverride.eyeLineY, faceCenterX: metricsOverride.faceCenterX,
+                    rollDegrees: metricsOverride.rollDegrees, yawDegrees: metricsOverride.yawDegrees,
+                    pitchDegrees: metricsOverride.pitchDegrees,
+                    eyesOpen: metricsOverride.eyesOpen, mouthClosed: metricsOverride.mouthClosed,
+                    neutralExpression: metricsOverride.neutralExpression,
+                    backgroundUniformity: metricsOverride.backgroundUniformity,
+                    backgroundMeanHex: metricsOverride.backgroundMeanHex,
+                    glassesDetected: metricsOverride.glassesDetected,
+                    glareOnGlasses: metricsOverride.glareOnGlasses,
+                    brightness: metricsOverride.brightness,
+                    lightingUniformity: metricsOverride.lightingUniformity)
             } else {
                 do { metrics = try engine.metrics(from: cg) }
                 catch { completion(.failure(.analysisFailed(String(describing: error)))); return }
@@ -73,65 +77,114 @@ final class PhotoImporter: @unchecked Sendable {
             guard metrics.faceCount != 0 else { completion(.failure(.noFace)); return }
             guard metrics.faceCount == 1 else { completion(.failure(.multipleFaces)); return }
 
-            lastSource = cg; lastMetrics = metrics; lastSpec = spec
-            guard let data = exportData(cg, metrics, spec, backgroundHex) else {
+            lastSource = cg
+            lastMetrics = metrics
+            guard let data = exportData(cg, metrics, spec, backgroundHex, brightnessBoost, skinSmoothing) else {
                 completion(.failure(.exportFailed)); return
             }
-            // Validate through the SAME crop the export just applied, so the verdict describes
-            // the photo we produced rather than the untouched full frame.
+            let srcJPEG = historyJPEG(from: cg) ?? fileData
             let framed = ExportGeometry.reprojected(metrics, spec: spec)
             let report = SpecValidator.validate(framed, against: spec)
-            completion(.success(Outcome(data: data, report: report)))
+            completion(.success(Outcome(data: data, sourceJPEG: srcJPEG, metrics: metrics, report: report)))
         }
     }
 
-    /// Re-export the imported photo in a different background color.
-    func reexport(backgroundHex: String?, completion: @escaping @Sendable (Data?) -> Void) {
+    /// Re-export the imported photo for `targetSpec`, background color, and retouch sliders,
+    /// returning both the new JPEG and the refreshed `ComplianceReport` for `targetSpec`.
+    func reexport(
+        spec targetSpec: PhotoSpec,
+        backgroundHex: String?,
+        brightnessBoost: Double = 0,
+        skinSmoothing: Double = 0,
+        completion: @escaping @Sendable ((data: Data, report: ComplianceReport)?) -> Void
+    ) {
         queue.async { [self] in
-            guard let cg = lastSource, let metrics = lastMetrics, let spec = lastSpec else {
+            guard let cg = lastSource, let metrics = lastMetrics,
+                  let data = exportData(cg, metrics, targetSpec, backgroundHex, brightnessBoost, skinSmoothing) else {
                 completion(nil); return
             }
-            completion(exportData(cg, metrics, spec, backgroundHex))
+            let framed = ExportGeometry.reprojected(metrics, spec: targetSpec)
+            let report = SpecValidator.validate(framed, against: targetSpec)
+            completion((data, report))
         }
     }
 
-    /// Render the print sheet for the imported photo. Nil when nothing has been imported.
-    func printSheet(paper: ExportPipeline.PrintPaper, backgroundHex: String?,
-                    completion: @escaping @Sendable (Data?) -> Void) {
+    /// Render the print sheet for the imported photo.
+    func printSheet(
+        spec targetSpec: PhotoSpec,
+        paper: ExportPipeline.PrintPaper,
+        backgroundHex: String?,
+        brightnessBoost: Double = 0,
+        skinSmoothing: Double = 0,
+        completion: @escaping @Sendable (Data?) -> Void
+    ) {
         queue.async { [self] in
-            guard let cg = lastSource, let metrics = lastMetrics, let spec = lastSpec else {
+            guard let cg = lastSource, let metrics = lastMetrics else {
                 completion(nil); return
             }
-            completion(sheetData(cg, metrics, spec, backgroundHex, paper))
+            completion(sheetData(cg, metrics, targetSpec, backgroundHex, brightnessBoost, skinSmoothing, paper))
         }
     }
 
-    private func exportData(_ cg: CGImage, _ metrics: FaceMetrics, _ spec: PhotoSpec,
-                            _ backgroundHex: String?) -> Data? {
+    private func exportData(
+        _ cg: CGImage, _ metrics: FaceMetrics, _ spec: PhotoSpec,
+        _ backgroundHex: String?, _ brightnessBoost: Double, _ skinSmoothing: Double
+    ) -> Data? {
         let opts = ExportPipeline.Options(
-            replaceBackground: spec.digitalEditPolicy == .allowed, backgroundHex: backgroundHex)
+            replaceBackground: spec.digitalEditPolicy == .allowed,
+            backgroundHex: backgroundHex,
+            brightnessBoost: brightnessBoost,
+            skinSmoothing: skinSmoothing)
         guard let out = try? pipeline.export(image: cg, spec: spec, metrics: metrics, options: opts) else {
             return nil
         }
         return try? pipeline.jpegData(out, spec: spec)
     }
 
-    private func sheetData(_ cg: CGImage, _ metrics: FaceMetrics, _ spec: PhotoSpec,
-                           _ backgroundHex: String?, _ paper: ExportPipeline.PrintPaper) -> Data? {
+    private func sheetData(
+        _ cg: CGImage, _ metrics: FaceMetrics, _ spec: PhotoSpec,
+        _ backgroundHex: String?, _ brightnessBoost: Double, _ skinSmoothing: Double,
+        _ paper: ExportPipeline.PrintPaper
+    ) -> Data? {
         let opts = ExportPipeline.Options(
-            replaceBackground: spec.digitalEditPolicy == .allowed, backgroundHex: backgroundHex)
+            replaceBackground: spec.digitalEditPolicy == .allowed,
+            backgroundHex: backgroundHex,
+            brightnessBoost: brightnessBoost,
+            skinSmoothing: skinSmoothing)
         guard let photo = try? pipeline.export(image: cg, spec: spec, metrics: metrics, options: opts),
               let sheet = pipeline.printSheet(photo: photo, spec: spec, paper: paper) else { return nil }
         return try? pipeline.jpegData(sheet.image, dpi: spec.dpi)
     }
+
+    private func historyJPEG(from cg: CGImage) -> Data? {
+        let maxDim = 2000.0
+        let w = Double(cg.width), h = Double(cg.height)
+        let target: CGImage
+        if max(w, h) > maxDim {
+            let s = maxDim / max(w, h)
+            let ci = CIImage(cgImage: cg).transformed(by: CGAffineTransform(scaleX: s, y: s))
+            target = ciContext.createCGImage(ci, from: ci.extent) ?? cg
+        } else {
+            target = cg
+        }
+        return try? pipeline.jpegData(target, quality: 0.90)
+    }
     #else
     func load(_ fileData: Data, spec: PhotoSpec, backgroundHex: String?,
+              brightnessBoost: Double = 0, skinSmoothing: Double = 0,
               metricsOverride: FaceMetrics? = nil,
               completion: @escaping @Sendable (Result<Outcome, ImportError>) -> Void) {
         completion(.failure(.decodeFailed))
     }
-    func reexport(backgroundHex: String?, completion: @escaping @Sendable (Data?) -> Void) { completion(nil) }
-    func printSheet(paper: ExportPipeline.PrintPaper, backgroundHex: String?,
-                    completion: @escaping @Sendable (Data?) -> Void) { completion(nil) }
+    func reexport(spec targetSpec: PhotoSpec, backgroundHex: String?,
+                  brightnessBoost: Double = 0, skinSmoothing: Double = 0,
+                  completion: @escaping @Sendable ((data: Data, report: ComplianceReport)?) -> Void) {
+        completion(nil)
+    }
+    func printSheet(spec targetSpec: PhotoSpec, paper: ExportPipeline.PrintPaper, backgroundHex: String?,
+                    brightnessBoost: Double = 0, skinSmoothing: Double = 0,
+                    completion: @escaping @Sendable (Data?) -> Void) {
+        completion(nil)
+    }
     #endif
 }

@@ -5,11 +5,22 @@ final class SpecLibraryTests: XCTestCase {
 
     func testLibraryLoadsBundledSpecs() throws {
         let lib = try SpecLibrary.bundled()
-        XCTAssertGreaterThanOrEqual(lib.specs.count, 16, "expected the verified spec set")
+        XCTAssertGreaterThanOrEqual(lib.specs.count, 24, "expected the expanded 24-spec set")
+        XCTAssertGreaterThanOrEqual(lib.countries.count, 12, "expected 12 countries/regions")
         XCTAssertNotNil(lib.spec(id: "us-passport"))
         XCTAssertNotNil(lib.spec(id: "cn-1inch"))
         XCTAssertNotNil(lib.spec(id: "ca-passport"))
         XCTAssertNotNil(lib.spec(id: "cn-idcard"))
+        XCTAssertNotNil(lib.spec(id: "cn-driver"))
+        XCTAssertNotNil(lib.spec(id: "cn-social"))
+        XCTAssertNotNil(lib.spec(id: "cn-exam"))
+        XCTAssertNotNil(lib.spec(id: "cn-hkmo"))
+        XCTAssertNotNil(lib.spec(id: "hk-passport"))
+        XCTAssertNotNil(lib.spec(id: "tw-passport"))
+        XCTAssertNotNil(lib.spec(id: "jp-resume"))
+        let grad = try XCTUnwrap(lib.spec(id: "cn-grad"))
+        XCTAssertEqual(grad.pixelWidth, 480)
+        XCTAssertEqual(grad.pixelHeight, 640)
     }
 
     func testSpecIDsAreUnique() throws {

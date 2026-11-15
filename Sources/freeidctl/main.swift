@@ -174,7 +174,13 @@ case "export":
     if metrics.faceCount != 1 { fail("expected exactly one face, found \(metrics.faceCount)") }
 
     let pipeline = ExportPipeline()
-    let opts = ExportPipeline.Options(replaceBackground: flag("replace-bg"), backgroundHex: option("bg"))
+    let bri = option("brightness").flatMap(Double.init) ?? 0.0
+    let smooth = option("smooth").flatMap(Double.init) ?? 0.0
+    let opts = ExportPipeline.Options(
+        replaceBackground: flag("replace-bg"),
+        backgroundHex: option("bg"),
+        brightnessBoost: bri,
+        skinSmoothing: smooth)
     do {
         var out = try pipeline.export(image: cg, spec: spec, metrics: metrics, options: opts)
         var note = ""

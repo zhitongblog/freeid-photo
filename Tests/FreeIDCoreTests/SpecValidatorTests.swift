@@ -156,12 +156,41 @@ final class SpecValidatorTests: XCTestCase {
     // MARK: - Glasses
 
     func testGlassesIsAdvisoryNotBlocking() throws {
-        // Glasses detection isn't reliable (and isn't wired yet) — advisory, never blocks.
+        // Glasses detection is advisory, never blocks capture.
         let s = try spec("us-passport") // glasses forbidden
         let m = with(compliantMetrics(for: s)) { $0.glassesDetected = true }
         let r = SpecValidator.validate(m, against: s)
-        XCTAssertNotEqual(check(r, "glasses").status, .fail)
+        XCTAssertEqual(check(r, "glasses").status, .warn)
         XCTAssertTrue(r.isCompliant)
+    }
+
+    func testLensGlareWarnsOnAllowedNoGlareSpec() throws {
+        let cn = try spec("cn-1inch") // allowedNoGlare
+        let cleanGlasses = with(compliantMetrics(for: cn)) {
+            $0.glassesDetected = true
+            $0.glareOnGlasses = false
+        }
+        XCTAssertEqual(check(SpecValidator.validate(cleanGlasses, against: cn), "glasses").status, .pass)
+
+        let glareGlasses = with(compliantMetrics(for: cn)) {
+            $0.glassesDetected = true
+            $0.glareOnGlasses = true
+        }
+        XCTAssertEqual(check(SpecValidator.validate(glareGlasses, against: cn), "glasses").status, .warn)
+    }
+
+    func testSideShadowFailsForStrictSpecButOnlyWarnsForEditAllowed() throws {
+        let us = try spec("us-passport")
+        let shadowedUS = with(compliantMetrics(for: us)) { $0.lightingUniformity = 0.42 }
+        let rUS = SpecValidator.validate(shadowedUS, against: us)
+        XCTAssertEqual(check(rUS, "faceLighting").status, .fail)
+        XCTAssertFalse(rUS.isCompliant)
+
+        let cn = try spec("cn-1inch")
+        let shadowedCN = with(compliantMetrics(for: cn)) { $0.lightingUniformity = 0.42 }
+        let rCN = SpecValidator.validate(shadowedCN, against: cn)
+        XCTAssertEqual(check(rCN, "faceLighting").status, .warn)
+        XCTAssertTrue(rCN.isCompliant)
     }
 
     // MARK: - The EUREKA: background-color policy is per-country
@@ -221,6 +250,7 @@ struct MutableMetrics {
     var backgroundMeanHex: String
     var glassesDetected, glareOnGlasses: Bool
     var brightness: Double
+    var lightingUniformity: Double
 
     init(_ m: FaceMetrics) {
         imageWidth = m.imageWidth; imageHeight = m.imageHeight; faceCount = m.faceCount
@@ -228,7 +258,8 @@ struct MutableMetrics {
         rollDegrees = m.rollDegrees; yawDegrees = m.yawDegrees; pitchDegrees = m.pitchDegrees
         eyesOpen = m.eyesOpen; mouthClosed = m.mouthClosed; neutralExpression = m.neutralExpression
         backgroundUniformity = m.backgroundUniformity; backgroundMeanHex = m.backgroundMeanHex
-        glassesDetected = m.glassesDetected; glareOnGlasses = m.glareOnGlasses; brightness = m.brightness
+        glassesDetected = m.glassesDetected; glareOnGlasses = m.glareOnGlasses
+        brightness = m.brightness; lightingUniformity = m.lightingUniformity
     }
     func build() -> FaceMetrics {
         FaceMetrics(
@@ -237,6 +268,7 @@ struct MutableMetrics {
             rollDegrees: rollDegrees, yawDegrees: yawDegrees, pitchDegrees: pitchDegrees,
             eyesOpen: eyesOpen, mouthClosed: mouthClosed, neutralExpression: neutralExpression,
             backgroundUniformity: backgroundUniformity, backgroundMeanHex: backgroundMeanHex,
-            glassesDetected: glassesDetected, glareOnGlasses: glareOnGlasses, brightness: brightness)
+            glassesDetected: glassesDetected, glareOnGlasses: glareOnGlasses,
+            brightness: brightness, lightingUniformity: lightingUniformity)
     }
 }

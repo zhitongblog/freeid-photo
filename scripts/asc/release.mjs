@@ -11,6 +11,7 @@ import fs from 'node:fs';
 
 const [marketingVersion, buildNumber] = process.argv.slice(2);
 const NO_SUBMIT = process.argv.includes('--no-submit');
+const REPLACE_SCREENSHOTS = process.argv.includes('--replace-screenshots');
 if (!marketingVersion || !buildNumber) { console.error('usage: node release.mjs <marketingVersion> <buildNumber> [--no-submit]'); process.exit(1); }
 const APP = CONFIG.appId;
 const log = (...a) => console.log('•', ...a);
@@ -30,8 +31,10 @@ const verId = ver.id;
 log('version', marketingVersion, verId);
 
 // 2) App-info localizations (name / subtitle / privacy URL).
-const appInfo = (await api('GET', `/v1/apps/${APP}/appInfos`)).data
-  .find((d) => (d.attributes.appStoreState || d.attributes.state) === 'PREPARE_FOR_SUBMISSION') || (await api('GET', `/v1/apps/${APP}/appInfos`)).data[0];
+const allAppInfos = (await api('GET', `/v1/apps/${APP}/appInfos`)).data;
+const appInfo = allAppInfos.find((d) => d.attributes.state === 'PREPARE_FOR_SUBMISSION' || d.attributes.appStoreState === 'PREPARE_FOR_SUBMISSION')
+  || allAppInfos.find((d) => d.attributes.state !== 'READY_FOR_DISTRIBUTION')
+  || allAppInfos[0];
 const ilocs = (await api('GET', `/v1/appInfos/${appInfo.id}/appInfoLocalizations?limit=50`)).data;
 for (const [locale, a] of Object.entries(M.appInfoLocalizations)) {
   const ex = ilocs.find((l) => l.attributes.locale === locale);
@@ -122,8 +125,17 @@ for (const [locale, files] of Object.entries(M.screenshots.locales)) {
   let set = (await api('GET', `/v1/appStoreVersionLocalizations/${vl.id}/appScreenshotSets`)).data.find((s) => s.attributes.screenshotDisplayType === M.screenshots.displayType);
   if (!set) set = (await api('POST', '/v1/appScreenshotSets', { data: { type: 'appScreenshotSets', attributes: { screenshotDisplayType: M.screenshots.displayType },
     relationships: { appStoreVersionLocalization: { data: { type: 'appStoreVersionLocalizations', id: vl.id } } } } })).data;
-  const existing = (await api('GET', `/v1/appScreenshotSets/${set.id}/appScreenshots`)).data.length;
-  if (existing > 0) { log('screenshots', locale, '— already has', existing, '(skip)'); continue; }
+  const existingShots = (await api('GET', `/v1/appScreenshotSets/${set.id}/appScreenshots`)).data;
+  if (existingShots.length > 0 && !REPLACE_SCREENSHOTS) {
+    log('screenshots', locale, '— already has', existingShots.length, '(skip)');
+    continue;
+  }
+  if (existingShots.length > 0 && REPLACE_SCREENSHOTS) {
+    for (const old of existingShots) {
+      await api('DELETE', `/v1/appScreenshots/${old.id}`);
+    }
+    log('  cleared', existingShots.length, 'old screenshots for', locale);
+  }
   for (const f of files) { await uploadScreenshot(set.id, M.screenshots.dir + f); log('  uploaded', locale, f); }
 }
 

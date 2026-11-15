@@ -5,19 +5,20 @@ import UIKit
 import Photos
 #endif
 
-/// Shows the finished spec-sized photo, lets the user pick a background color (re-exported
-/// instantly), and save or share it. The payoff screen after a capture.
+/// Shows the finished spec-sized photo, lets the user switch specs on the fly, pick a
+/// background color or gently adjust brightness & skin texture (on edit-allowed specs), and
+/// save, share, or tile onto a print sheet.
 struct ResultScreen: View {
     @Bindable var model: CaptureViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var saveState: SaveState = .idle
     @State private var showingPrintSheet = false
+    @State private var showingSpecSwitcher = false
 
     enum SaveState { case idle, saving, saved, failed }
 
     private var spec: PhotoSpec { model.selectedSpec }
     private var imageData: Data? { model.exportedData }
-    /// The spec's required background color name, localized, e.g. "白色" / "white".
     private var bgName: String { SpecText.colorName(spec.background.hex) }
 
     private var specMetadataSummary: String {
@@ -53,9 +54,9 @@ struct ResultScreen: View {
                         .padding(.horizontal, 24)
                     } else {
                         ScrollView {
-                            VStack(spacing: 16) {
-                                photoPreview(maxHeight: min(360, max(200, geo.size.height * 0.45)))
-                                    .padding(.top, 8)
+                            VStack(spacing: 14) {
+                                photoPreview(maxHeight: min(340, max(190, geo.size.height * 0.40)))
+                                    .padding(.top, 6)
                                 detailsSection
                                 actionsSection
                             }
@@ -70,11 +71,23 @@ struct ResultScreen: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(S.done.t) { dismiss() }
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showingSpecSwitcher = true
+                    } label: {
+                        Label(S.switchSpec.t, systemImage: "rectangle.2.swap")
+                            .font(.subheadline)
+                    }
+                }
             }
             .sheet(isPresented: $showingPrintSheet) { PrintSheetView(model: model) }
+            .sheet(isPresented: $showingSpecSwitcher) {
+                SpecPickerView(model: model, isPresented: $showingSpecSwitcher)
+            }
+            .onChange(of: model.exportedData) { _, _ in
+                if saveState == .saved { saveState = .idle }
+            }
             #if DEBUG
-            // Harness: `-show-print-sheet` opens the sheet without a tap, so the screen can be
-            // driven where UI automation isn't available.
             .task {
                 if ProcessInfo.processInfo.arguments.contains("-show-print-sheet") {
                     showingPrintSheet = true
@@ -99,21 +112,32 @@ struct ResultScreen: View {
 
     @ViewBuilder
     private var detailsSection: some View {
-        // Don't claim "ready to use" over a list of unmet requirements — the card
-        // below says what's wrong, so the headline stays honest and steps aside.
         if model.importIssues.isEmpty {
             Label(S.readyToUse.t, systemImage: "checkmark.seal.fill")
                 .font(.headline).foregroundStyle(.green)
         }
-        Text(specMetadataSummary)
-            .font(.caption).foregroundStyle(.secondary)
+
+        Button {
+            showingSpecSwitcher = true
+        } label: {
+            HStack(spacing: 5) {
+                Text(specMetadataSummary)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2)
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(.secondary.opacity(0.10), in: Capsule())
+        }
+        .buttonStyle(.plain)
 
         if !model.importIssues.isEmpty { issuesCard }
 
         if model.canChooseBackground {
             backgroundPicker
         } else if model.backgroundLockedToSpec {
-            // Editable official doc: background was set to the REQUIRED color, not a choice.
             Label(String(format: S.requiredBgNote.t, bgName), systemImage: "checkmark.circle")
                 .font(.caption).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center).padding(.horizontal)
@@ -122,6 +146,56 @@ struct ResultScreen: View {
                 .font(.caption).foregroundStyle(.orange)
                 .multilineTextAlignment(.center).padding(.horizontal)
         }
+
+        if model.canRetouchPortrait {
+            adjustmentsCard
+        }
+    }
+
+    private var adjustmentsCard: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: "sun.max")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 20)
+                Text(S.brightnessLabel.t)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 68, alignment: .leading)
+                Slider(value: $model.brightnessBoost, in: -0.20...0.20, step: 0.02) {
+                    Text(S.brightnessLabel.t)
+                } onEditingChanged: { editing in
+                    if !editing { model.reexportCurrent() }
+                }
+            }
+            HStack(spacing: 10) {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 20)
+                Text(S.smoothingLabel.t)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 68, alignment: .leading)
+                Slider(value: $model.skinSmoothing, in: 0.0...1.0, step: 0.05) {
+                    Text(S.smoothingLabel.t)
+                } onEditingChanged: { editing in
+                    if !editing { model.reexportCurrent() }
+                }
+            }
+            if model.hasActiveAdjustments {
+                HStack {
+                    Spacer()
+                    Button(S.resetAdjustments.t) {
+                        model.resetAdjustments()
+                    }
+                    .font(.caption)
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal)
     }
 
     @ViewBuilder
@@ -165,9 +239,6 @@ struct ResultScreen: View {
         }
     }
 
-    /// What this photo still doesn't satisfy. Only shown for photos picked from the library —
-    /// a live capture was already coached in the viewfinder. Advisory, never blocking: the
-    /// photo is saved either way, and the user is the one who knows what it's for.
     private var issuesCard: some View {
         VStack(alignment: .leading, spacing: 6) {
             Label(S.checkBeforeYouSubmit.t, systemImage: "exclamationmark.triangle.fill")
@@ -182,15 +253,14 @@ struct ResultScreen: View {
         .padding(.horizontal)
     }
 
-    /// Row of background color swatches; tapping re-exports the shot in that color.
     private var backgroundPicker: some View {
         VStack(spacing: 8) {
             Text(S.backgroundLabel.t).font(.caption).foregroundStyle(.secondary)
             HStack(spacing: 16) {
                 ForEach(CaptureViewModel.BackgroundChoice.all) { choice in
-                    let selected = model.backgroundHex == choice.hex
+                    let selected = model.backgroundHex.uppercased() == choice.hex.uppercased()
                     Button {
-                        if saveState == .saved { saveState = .idle } // new color → allow re-save
+                        if saveState == .saved { saveState = .idle }
                         model.chooseBackground(choice.hex)
                     } label: {
                         Circle()
@@ -234,7 +304,6 @@ struct ResultScreen: View {
         }
     }
 
-    /// Write the JPEG to a temp file so ShareLink can share a real image file.
     private func shareURL(_ data: Data) -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("FreeID-\(spec.id).jpg")

@@ -36,4 +36,4 @@ echo "==> Wait for build $BUILD to finish processing (VALID)…"
 node "$ROOT/scripts/asc/wait-build.mjs" "$BUILD"
 
 echo "==> Apply metadata + submit"
-node "$ROOT/scripts/asc/release.mjs" "$MKT" "$BUILD"
+node "$ROOT/scripts/asc/release.mjs" "$MKT" "$BUILD" "${@:3}"

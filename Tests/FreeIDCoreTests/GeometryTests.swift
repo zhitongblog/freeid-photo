@@ -73,6 +73,61 @@ final class FaceMetricsMathTests: XCTestCase {
         let clampedHigh = FaceMetricsMath.build(inputs)
         XCTAssertEqual(clampedHigh.crownY, 0.03, accuracy: 0.0001)
     }
+
+    func testSmileScoreFlipsNeutralExpressionToFalse() {
+        let neutralScore = FaceMetricsMath.smileScore(
+            leftCornerY: 0.30, rightCornerY: 0.30, mouthCenterY: 0.295, mouthWidth: 0.25, lipGapRatio: 0.03)
+        XCTAssertLessThanOrEqual(neutralScore, 0.085)
+
+        let bigGrinScore = FaceMetricsMath.smileScore(
+            leftCornerY: 0.34, rightCornerY: 0.34, mouthCenterY: 0.30, mouthWidth: 0.24, lipGapRatio: 0.14)
+        XCTAssertGreaterThan(bigGrinScore, 0.085)
+
+        var smiling = sampleInputs()
+        smiling.smileScore = bigGrinScore
+        XCTAssertFalse(FaceMetricsMath.build(smiling).neutralExpression)
+    }
+
+    func testCheekLightingUniformityDetectsSideShadow() {
+        XCTAssertEqual(FaceMetricsMath.cheekLightingUniformity(leftMeanLum: 0.62, rightMeanLum: 0.62), 1.0, accuracy: 0.001)
+        let shadowed = FaceMetricsMath.cheekLightingUniformity(leftMeanLum: 0.72, rightMeanLum: 0.48)
+        XCTAssertLessThan(shadowed, 0.60)
+    }
+
+    func testGlassesAndGlareHeuristics() {
+        // Bare face with tiny pupil catchlight (< 0.5%) must NOT false-positive.
+        let bare = FaceMetricsMath.analyzeGlassesAndGlare(
+            bridgeEdgeRatio: 0.02, rimContrast: 0.02, specularSpotFraction: 0.004, eyePeakContrast: 0.30)
+        XCTAssertFalse(bare.glassesDetected)
+        XCTAssertFalse(bare.glareOnGlasses)
+
+        // Distinct eyeglass bridge + lower rim without glare.
+        let framed = FaceMetricsMath.analyzeGlassesAndGlare(
+            bridgeEdgeRatio: 0.095, rimContrast: 0.070, specularSpotFraction: 0.002, eyePeakContrast: 0.12)
+        XCTAssertTrue(framed.glassesDetected)
+        XCTAssertFalse(framed.glareOnGlasses)
+
+        // Specular lens glare (even on rimless glasses).
+        let glaring = FaceMetricsMath.analyzeGlassesAndGlare(
+            bridgeEdgeRatio: 0.03, rimContrast: 0.03, specularSpotFraction: 0.035, eyePeakContrast: 0.34)
+        XCTAssertTrue(glaring.glassesDetected)
+        XCTAssertTrue(glaring.glareOnGlasses)
+    }
+
+    func testBackwardsCompatibleDecodingWithoutLightingUniformity() throws {
+        let legacyJSON = """
+        {
+          "imageWidth": 1000, "imageHeight": 1000, "faceCount": 1,
+          "crownY": 0.1, "chinY": 0.7, "eyeLineY": 0.4, "faceCenterX": 0.5,
+          "rollDegrees": 0, "yawDegrees": 0, "pitchDegrees": 0,
+          "eyesOpen": true, "mouthClosed": true, "neutralExpression": true,
+          "backgroundUniformity": 0.95, "backgroundMeanHex": "#FFFFFF",
+          "glassesDetected": false, "glareOnGlasses": false, "brightness": 0.6
+        }
+        """
+        let decoded = try JSONDecoder().decode(FaceMetrics.self, from: Data(legacyJSON.utf8))
+        XCTAssertEqual(decoded.lightingUniformity, 1.0, accuracy: 0.0001)
+    }
 }
 
 final class ExportGeometryTests: XCTestCase {

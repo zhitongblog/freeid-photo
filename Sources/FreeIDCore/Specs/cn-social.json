@@ -1,0 +1,22 @@
+{
+  "id": "cn-social",
+  "country": "CN",
+  "docType": "idCard",
+  "displayName": { "en": "China Social Security Card", "zh": "中国社保卡 / 医保卡" },
+  "outputSize": { "widthMM": 26, "heightMM": 32 },
+  "dpi": 350,
+  "headHeight": { "min": 18, "max": 22 },
+  "eyeLineFromBottom": { "min": 14, "max": 20 },
+  "background": {
+    "name": { "en": "White", "zh": "白色" },
+    "hex": "#FFFFFF",
+    "toleranceDeltaE": 12,
+    "minUniformity": 0.9
+  },
+  "digitalEditPolicy": "allowed",
+  "expression": { "neutral": true, "mouthClosed": true, "eyesOpen": true },
+  "glasses": "allowedNoGlare",
+  "fileSpec": { "pixelWidth": 358, "pixelHeight": 441, "minKB": 14, "maxKB": 40, "format": "jpeg" },
+  "officialSourceURL": "https://www.mohrss.gov.cn/",
+  "lastVerified": "2026-11-15"
+}

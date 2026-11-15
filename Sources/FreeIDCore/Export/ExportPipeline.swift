@@ -7,9 +7,9 @@ import ImageIO
 import UniformTypeIdentifiers
 
 /// Turns a captured photo into a spec-compliant output image: crop + align to the spec's
-/// head/eye geometry, optional background replacement (only when the spec's edit policy
-/// allows it), resize to the exact pixel dimensions, and optionally lay copies onto a
-/// print sheet. All on-device, all Core Image.
+/// head/eye geometry, optional background replacement and subtle portrait tone/smoothing
+/// (only when the spec's edit policy allows it), resize to the exact pixel dimensions, and
+/// optionally lay copies onto a print sheet. All on-device, all Core Image.
 public struct ExportPipeline: Sendable {
 
     public init() {}
@@ -27,15 +27,28 @@ public struct ExportPipeline: Sendable {
         }
     }
 
-    public struct Options: Sendable {
+    public struct Options: Sendable, Equatable {
         /// Replace the background with a solid color. Rejected for `.strict` specs.
         public var replaceBackground: Bool
         /// Background color as #RRGGBB to composite behind the subject. When nil, the spec's
         /// own `background.hex` is used. Lets the user pick white / blue / red / gray.
         public var backgroundHex: String?
-        public init(replaceBackground: Bool = false, backgroundHex: String? = nil) {
+        /// Gentle exposure/brightness lift (-0.25 ... +0.25). Applied only on `.allowed` specs.
+        public var brightnessBoost: Double
+        /// Natural skin-texture smoothing (0.0 ... 1.0) that preserves eye/brow/hair detail.
+        /// Applied only on `.allowed` specs.
+        public var skinSmoothing: Double
+
+        public init(
+            replaceBackground: Bool = false,
+            backgroundHex: String? = nil,
+            brightnessBoost: Double = 0.0,
+            skinSmoothing: Double = 0.0
+        ) {
             self.replaceBackground = replaceBackground
             self.backgroundHex = backgroundHex
+            self.brightnessBoost = brightnessBoost
+            self.skinSmoothing = skinSmoothing
         }
     }
 
@@ -50,31 +63,49 @@ public struct ExportPipeline: Sendable {
         }
         let targetW = spec.pixelWidth, targetH = spec.pixelHeight
 
+        // Optional subject retouching (brightness + subtle skin smoothing) — ONLY when the
+        // destination country allows digital editing, and applied to the foreground BEFORE
+        // compositing onto the solid background so a pure #FFFFFF backdrop never shifts grey
+        // or blows out when the user adjusts brightness!
+        let sourceCG: CGImage
+        if spec.digitalEditPolicy == .allowed,
+           (abs(options.brightnessBoost) > 0.001 || options.skinSmoothing > 0.001) {
+            let retouched = applyPortraitRetouch(
+                CIImage(cgImage: cg),
+                brightnessBoost: options.brightnessBoost,
+                skinSmoothing: options.skinSmoothing)
+            guard let rendered = context.createCGImage(retouched, from: retouched.extent) else {
+                throw ExportError.renderFailed
+            }
+            sourceCG = rendered
+        } else {
+            sourceCG = cg
+        }
+
         // Background-replaced path: replace the background on the WHOLE source, then place it on
         // a color canvas using the IDEAL (unclamped) crop. Areas the source doesn't cover are
         // filled with the same background color — that's what gives proper top/bottom/side
         // whitespace even when the source is a tight headshot.
         if options.replaceBackground {
             let hex = options.backgroundHex ?? spec.background.hex
-            let replaced = try replaceBackground(of: cg, with: hex)
+            let replaced = try replaceBackground(of: sourceCG, originalForMask: cg, with: hex)
             guard let baseCG = context.createCGImage(replaced, from: replaced.extent) else {
                 throw ExportError.renderFailed
             }
             let rect = ExportGeometry.idealCropRect(
-                imageWidth: cg.width, imageHeight: cg.height, spec: spec, metrics: metrics)
+                imageWidth: sourceCG.width, imageHeight: sourceCG.height, spec: spec, metrics: metrics)
             guard let out = compose(baseCG, crop: rect, targetW: targetW, targetH: targetH, hex: hex) else {
                 throw ExportError.renderFailed
             }
             return out
         }
 
-        // Strict path (no editing): crop clamped to the source, resize only. No padding —
-        // we can't fabricate background where the real photo didn't reach.
+        // Strict path (no editing) or unreplaced allowed path: crop clamped to the source, resize only.
         let rect = ExportGeometry.cropRect(
-            imageWidth: cg.width, imageHeight: cg.height, spec: spec, metrics: metrics)
-        let ci = CIImage(cgImage: cg)
+            imageWidth: sourceCG.width, imageHeight: sourceCG.height, spec: spec, metrics: metrics)
+        let ci = CIImage(cgImage: sourceCG)
         let ciCrop = CGRect(
-            x: rect.x, y: Double(cg.height) - rect.y - rect.height,
+            x: rect.x, y: Double(sourceCG.height) - rect.y - rect.height,
             width: rect.width, height: rect.height)
         var working = ci.cropped(to: ciCrop)
         working = working.transformed(by: CGAffineTransform(
@@ -86,6 +117,64 @@ public struct ExportPipeline: Sendable {
             throw ExportError.renderFailed
         }
         return out
+    }
+
+    /// Subtle, studio-natural brightness and skin-texture refinement. Never plastic: mixes a
+    /// gentle surface blur at low opacity and restores fine luminance micro-edges so eyes,
+    /// eyelashes, brows, and hair strands stay crisp.
+    public func applyPortraitRetouch(
+        _ input: CIImage, brightnessBoost: Double, skinSmoothing: Double
+    ) -> CIImage {
+        let extent = input.extent
+        var current = input
+
+        let clampedSmooth = min(1.0, max(0.0, skinSmoothing))
+        if clampedSmooth > 0.001 {
+            let blurRadius = max(1.2, min(6.0, extent.width * 0.0045)) * (0.5 + 0.5 * clampedSmooth)
+            if let blur = CIFilter(name: "CIGaussianBlur") {
+                blur.setValue(current.clampedToExtent(), forKey: kCIInputImageKey)
+                blur.setValue(blurRadius, forKey: kCIInputRadiusKey)
+                if let soft = blur.outputImage?.cropped(to: extent),
+                   let dissolve = CIFilter(name: "CIDissolveTransition") {
+                    dissolve.setValue(current, forKey: kCIInputImageKey)
+                    dissolve.setValue(soft, forKey: kCIInputTargetImageKey)
+                    // Cap blend at 38% so skin pores look rested, never airbrushed/fake.
+                    dissolve.setValue(clampedSmooth * 0.38, forKey: kCIInputTimeKey)
+                    if let blended = dissolve.outputImage?.cropped(to: extent) {
+                        current = blended
+                    }
+                }
+            }
+            if let sharpen = CIFilter(name: "CISharpenLuminance") {
+                sharpen.setValue(current, forKey: kCIInputImageKey)
+                sharpen.setValue(clampedSmooth * 0.32, forKey: kCIInputSharpnessKey)
+                if let crisp = sharpen.outputImage?.cropped(to: extent) {
+                    current = crisp
+                }
+            }
+        }
+
+        let clampedBri = min(0.25, max(-0.25, brightnessBoost))
+        if abs(clampedBri) > 0.001 {
+            if let exp = CIFilter(name: "CIExposureAdjust") {
+                exp.setValue(current, forKey: kCIInputImageKey)
+                exp.setValue(clampedBri * 1.1, forKey: kCIInputEVKey)
+                if let out = exp.outputImage?.cropped(to: extent) {
+                    current = out
+                }
+            }
+            // Protect highlights when lifting brightness so foreheads don't clip.
+            if clampedBri > 0, let hs = CIFilter(name: "CIHighlightShadowAdjust") {
+                hs.setValue(current, forKey: kCIInputImageKey)
+                hs.setValue(max(0.75, 1.0 - clampedBri * 0.8), forKey: "inputHighlightAmount")
+                hs.setValue(min(0.35, clampedBri * 0.9), forKey: "inputShadowAmount")
+                if let out = hs.outputImage?.cropped(to: extent) {
+                    current = out
+                }
+            }
+        }
+
+        return current
     }
 
     /// Draw `src` onto a `hex`-filled `targetW×targetH` canvas so the (possibly out-of-bounds)
@@ -114,8 +203,12 @@ public struct ExportPipeline: Sendable {
     /// Composite the foreground person over a solid background color using person
     /// segmentation. Used only when the spec allows digital editing.
     public func replaceBackground(of cg: CGImage, with hex: String) throws -> CIImage {
+        try replaceBackground(of: cg, originalForMask: cg, with: hex)
+    }
+
+    private func replaceBackground(of cg: CGImage, originalForMask maskSrc: CGImage, with hex: String) throws -> CIImage {
         let ci = CIImage(cgImage: cg)
-        let handler = VNImageRequestHandler(cgImage: cg, options: [:])
+        let handler = VNImageRequestHandler(cgImage: maskSrc, options: [:])
         let req = VNGeneratePersonSegmentationRequest()
         req.qualityLevel = .accurate
         req.outputPixelFormat = kCVPixelFormatType_OneComponent8

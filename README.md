@@ -67,18 +67,20 @@ and the per-country background-color policy.
 ## Spec data
 
 Specs live as one JSON file per country+document in `Sources/FreeIDCore/Specs/`. Each
-carries `officialSourceURL` and `lastVerified`. 16 specs across 10 countries:
+carries `officialSourceURL` and `lastVerified`. 24 specs across 12 countries & regions:
 
-| Country | Specs | Edit policy |
+| Country / Region | Specs | Edit policy |
 |---|---|---|
-| China | 1-inch, 2-inch, ID card, passport, visa | allowed |
+| China | 1-inch, 2-inch, ID card, driver license, social security, exam (CET/teacher/civil), CHSI graduation (480×640), HK/Macau/TW travel permit, passport, visa | allowed |
+| Hong Kong | HKSAR passport / Home Return Permit (40×50mm) | allowed |
+| Taiwan | passport / entry permit (35×45mm) | allowed |
 | US | passport, visa | strict (no AI/edits) |
 | Canada | passport (50×70mm) | strict |
 | UK | passport | strict |
 | Australia | passport | strict |
 | South Korea | passport | strict |
 | Schengen / EU | visa | allowed |
-| Japan | visa (45×45mm) | allowed |
+| Japan | visa (45×45mm), resume / residence card (30×40mm) | allowed |
 | India | passport (630×810px), e-visa 2×2 | allowed |
 | Singapore | passport (400×514px) | allowed |
 
@@ -132,13 +134,13 @@ compiled into a Release build.
 
 ## Status
 
-- [x] FreeIDCore: spec model, library, validator, color math (34 tests)
+- [x] FreeIDCore: spec model, library, validator, color math
 - [x] freeidctl CLI: specs / validate (image or JSON) / export / print sheet
-- [x] VisionComplianceEngine: FaceMetrics from a real image (face landmarks + segmentation)
-- [x] ExportPipeline: crop / align / background replace / size normalization / print sheet
-- [x] FreeIDApp: SwiftUI live-compliance viewfinder + spec picker (builds & runs on Simulator)
+- [x] VisionComplianceEngine: FaceMetrics from a real image (face landmarks, crown segmentation, glasses & lens glare, cheek lighting symmetry, smile check)
+- [x] ExportPipeline: crop / align / background replace / portrait brightness & skin refinement / KB size window / print sheet
+- [x] FreeIDApp: SwiftUI live-compliance viewfinder + spec picker + result spec switcher + local history originals
 - [x] freeid-mcp: MCP server (list/get/validate/export, single photo or print sheet)
-- [x] Photo-library import: use a photo you already have, with an honest post-hoc verdict
+- [x] Photo-library import & local history originals: use a photo you already have or re-export a previous shot in 1 tap
 - [x] Print sheets: 4×6″ / 5×7″ / A4, centred with cut guides, DPI stamped into the file
-- [x] 16 specs across 10 countries, dimensions verified against official sources
-- [ ] On-device tuning: crown/hairline calibration, glasses/glare detection, live capture (/ios-qa)
+- [x] 24 specs across 12 countries/regions, dimensions verified against official sources
+- [x] App Store Connect automation & localized store assets across all 8 languages (`en-US`, `zh-Hans`, `zh-Hant`, `ja`, `ko`, `fr-FR`, `de-DE`, `it`)

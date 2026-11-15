@@ -111,5 +111,42 @@ final class PrintSheetTests: XCTestCase {
         let props = try XCTUnwrap(CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any])
         XCTAssertEqual(props[kCGImagePropertyDPIWidth] as? Int, 300)
     }
+
+    func testPortraitRetouchBrightensImageOnlyOnAllowedSpecs() throws {
+        let cn = try oneInchSpec()
+        let us = try XCTUnwrap(try SpecLibrary.bundled().spec(id: "us-passport"))
+        let base = solidPhoto(cn) // mid-tone blue/slate fill
+
+        let retouchedCI = pipeline.applyPortraitRetouch(
+            CIImage(cgImage: base), brightnessBoost: 0.18, skinSmoothing: 0.6)
+        let ctx = CIContext()
+        let retouchedCG = try XCTUnwrap(ctx.createCGImage(retouchedCI, from: retouchedCI.extent))
+        XCTAssertEqual(retouchedCG.width, base.width)
+        XCTAssertEqual(retouchedCG.height, base.height)
+
+        func meanChannelSum(_ img: CGImage) -> Int {
+            var px = [UInt8](repeating: 0, count: 4)
+            let c = CGContext(data: &px, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                              space: CGColorSpaceCreateDeviceRGB(),
+                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+            c.draw(img, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+            return Int(px[0]) + Int(px[1]) + Int(px[2])
+        }
+        XCTAssertGreaterThan(meanChannelSum(retouchedCG), meanChannelSum(base))
+
+        // On a strict spec (US), passing brightness/smoothing leaves pixels untouched.
+        let m = FaceMetrics(
+            imageWidth: base.width, imageHeight: base.height, faceCount: 1,
+            crownY: 0.15, chinY: 0.70, eyeLineY: 0.42, faceCenterX: 0.5,
+            rollDegrees: 0, yawDegrees: 0, pitchDegrees: 0,
+            eyesOpen: true, mouthClosed: true, neutralExpression: true,
+            backgroundUniformity: 0.95, backgroundMeanHex: "#FFFFFF",
+            glassesDetected: false, glareOnGlasses: false, brightness: 0.5)
+        let strictPlain = try pipeline.export(image: base, spec: us, metrics: m)
+        let strictWithSliders = try pipeline.export(
+            image: base, spec: us, metrics: m,
+            options: .init(brightnessBoost: 0.20, skinSmoothing: 0.8))
+        XCTAssertEqual(meanChannelSum(strictPlain), meanChannelSum(strictWithSliders))
+    }
 }
 #endif

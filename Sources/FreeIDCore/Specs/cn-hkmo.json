@@ -1,0 +1,22 @@
+{
+  "id": "cn-hkmo",
+  "country": "CN",
+  "docType": "residencePermit",
+  "displayName": { "en": "HK / Macau / Taiwan Travel Permit", "zh": "往来港澳台通行证" },
+  "outputSize": { "widthMM": 33, "heightMM": 48 },
+  "dpi": 300,
+  "headHeight": { "min": 28, "max": 33 },
+  "eyeLineFromBottom": { "min": 27, "max": 35 },
+  "background": {
+    "name": { "en": "White", "zh": "白色" },
+    "hex": "#FFFFFF",
+    "toleranceDeltaE": 12,
+    "minUniformity": 0.88
+  },
+  "digitalEditPolicy": "allowed",
+  "expression": { "neutral": true, "mouthClosed": true, "eyesOpen": true },
+  "glasses": "forbidden",
+  "fileSpec": { "pixelWidth": 390, "pixelHeight": 567, "minKB": 40, "maxKB": 120, "format": "jpeg" },
+  "officialSourceURL": "https://www.nia.gov.cn/",
+  "lastVerified": "2026-11-15"
+}

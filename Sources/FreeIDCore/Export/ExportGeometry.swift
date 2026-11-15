@@ -113,6 +113,6 @@ public enum ExportGeometry {
             eyesOpen: m.eyesOpen, mouthClosed: m.mouthClosed, neutralExpression: m.neutralExpression,
             backgroundUniformity: m.backgroundUniformity, backgroundMeanHex: m.backgroundMeanHex,
             glassesDetected: m.glassesDetected, glareOnGlasses: m.glareOnGlasses,
-            brightness: m.brightness)
+            brightness: m.brightness, lightingUniformity: m.lightingUniformity)
     }
 }

@@ -1,0 +1,22 @@
+{
+  "id": "jp-resume",
+  "country": "JP",
+  "docType": "general",
+  "displayName": { "en": "Japan Resume / Residence Card (30x40)", "zh": "日本履历书 / 在留卡 30×40" },
+  "outputSize": { "widthMM": 30, "heightMM": 40 },
+  "dpi": 300,
+  "headHeight": { "min": 22, "max": 27 },
+  "eyeLineFromBottom": { "min": 20, "max": 26 },
+  "background": {
+    "name": { "en": "White", "zh": "白色" },
+    "hex": "#FFFFFF",
+    "toleranceDeltaE": 14,
+    "minUniformity": 0.85
+  },
+  "digitalEditPolicy": "allowed",
+  "expression": { "neutral": true, "mouthClosed": true, "eyesOpen": true },
+  "glasses": "allowedNoGlare",
+  "fileSpec": null,
+  "officialSourceURL": "https://www.moj.go.jp/isa/",
+  "lastVerified": "2026-11-15"
+}

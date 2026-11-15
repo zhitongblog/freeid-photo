@@ -72,6 +72,8 @@ func toolList() -> [[String: Any]] {
                                 "spec": ["type": "string"],
                                 "out": ["type": "string"],
                                 "replaceBackground": ["type": "boolean"],
+                                "brightnessBoost": ["type": "number"],
+                                "skinSmoothing": ["type": "number"],
                                 "paper": ["type": "string", "enum": ["4x6", "5x7", "a4"]]],
                              "required": ["path", "spec", "out"]]])
     }
@@ -125,7 +127,10 @@ func callTool(name: String, args: [String: Any]) -> (text: String, isError: Bool
             let metrics = try VisionComplianceEngine().metrics(from: cg)
             guard metrics.faceCount == 1 else { return ("expected one face, found \(metrics.faceCount)", true) }
             let pipeline = ExportPipeline()
-            let opts = ExportPipeline.Options(replaceBackground: (args["replaceBackground"] as? Bool) ?? false)
+            let opts = ExportPipeline.Options(
+                replaceBackground: (args["replaceBackground"] as? Bool) ?? false,
+                brightnessBoost: (args["brightnessBoost"] as? Double) ?? 0.0,
+                skinSmoothing: (args["skinSmoothing"] as? Double) ?? 0.0)
             var outImage = try pipeline.export(image: cg, spec: spec, metrics: metrics, options: opts)
             var note = ""
             if let paperName = args["paper"] as? String {

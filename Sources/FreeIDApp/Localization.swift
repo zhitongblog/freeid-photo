@@ -82,13 +82,21 @@ enum S {
         it: "Scatto non riuscito — tieni il viso nel riquadro e riprova.")
     static let ok = Loc8(zh: "好", zhTW: "好", en: "OK", ja: "OK", ko: "확인", fr: "OK", de: "OK", it: "OK")
 
-    // Result screen
+    // Result screen & adjustments
     static let readyToUse = Loc8(zh: "已按规格生成，可直接使用", zhTW: "已按規格生成，可直接使用",
         en: "Ready to use — sized to spec", ja: "規格どおりに生成、そのまま使えます",
         ko: "규격에 맞게 생성됨 — 바로 사용 가능", fr: "Prêt à l'emploi — aux dimensions requises",
         de: "Fertig — auf Spec-Maß gebracht", it: "Pronta — alle dimensioni richieste")
     static let backgroundLabel = Loc8(zh: "背景颜色", zhTW: "背景顏色", en: "Background",
         ja: "背景色", ko: "배경색", fr: "Arrière-plan", de: "Hintergrund", it: "Sfondo")
+    static let brightnessLabel = Loc8(zh: "亮度微调", zhTW: "亮度微調", en: "Brightness",
+        ja: "明るさ調整", ko: "밝기 조절", fr: "Luminosité", de: "Helligkeit", it: "Luminosità")
+    static let smoothingLabel = Loc8(zh: "自然肤质", zhTW: "自然膚質", en: "Natural skin",
+        ja: "自然な肌補正", ko: "자연스러운 피부", fr: "Grain de peau naturel", de: "Natürliche Haut", it: "Pelle naturale")
+    static let resetAdjustments = Loc8(zh: "重置微调", zhTW: "重置微調", en: "Reset",
+        ja: "リセット", ko: "초기화", fr: "Réinitialiser", de: "Zurücksetzen", it: "Reimposta")
+    static let switchSpec = Loc8(zh: "换规格重导出", zhTW: "換規格重匯出", en: "Change spec",
+        ja: "別のサイズで出力", ko: "다른 규격으로 변경", fr: "Changer de format", de: "Format wechseln", it: "Cambia formato")
     /// %@ = localized color name.
     static let requiredBgNote = Loc8(zh: "已按该证件要求使用 %@ 背景", zhTW: "已按該證件要求使用 %@ 背景",
         en: "Set to the required %@ background", ja: "この証明書に必要な %@ の背景に設定しました",
@@ -120,6 +128,31 @@ enum S {
         ko: "내 사진", fr: "Votre photo", de: "Dein Foto", it: "La tua foto")
     static let done = Loc8(zh: "完成", zhTW: "完成", en: "Done", ja: "完了", ko: "완료",
         fr: "Terminé", de: "Fertig", it: "Fine")
+
+    // History originals
+    static let historyTitle = Loc8(zh: "历史原片", zhTW: "歷史原片", en: "Recent photos",
+        ja: "撮影履歴", ko: "최근 원본", fr: "Photos récentes", de: "Letzte Aufnahmen", it: "Foto recenti")
+    static let historyNote = Loc8(
+        zh: "原片仅保存在本机，点选即可按当前规格一键导出证件照。",
+        zhTW: "原片僅保存在本機，點選即可按目前規格一鍵匯出證件照。",
+        en: "Originals stay on this device — tap one to export it in the selected spec.",
+        ja: "元画像は端末内のみに保存されます。タップすると選択中の規格で書き出します。",
+        ko: "원본은 기기에만 저장됩니다 — 탭하면 현재 규격으로 바로 생성됩니다.",
+        fr: "Les originaux restent sur l'appareil — touchez-en un pour l'exporter au format choisi.",
+        de: "Originale bleiben auf dem Gerät — antippen, um im gewählten Format zu exportieren.",
+        it: "Gli originali restano sul dispositivo — toccane uno per esportarlo nel formato scelto.")
+    static let historyEmpty = Loc8(zh: "还没有历史原片，拍一张或从相册导入后会自动留存",
+        zhTW: "還沒有歷史原片，拍一張或從相簿匯入後會自動留存",
+        en: "No recent originals yet — shoot or import a photo and it'll appear here",
+        ja: "まだ履歴がありません。撮影または読み込むとここに残ります",
+        ko: "아직 최근 사진이 없어요 — 촬영하거나 불러오면 여기에 보관됩니다",
+        fr: "Aucune photo récente — prenez ou importez une photo pour la retrouver ici",
+        de: "Noch keine Aufnahmen — nach dem Fotografieren oder Importieren erscheinen sie hier",
+        it: "Nessuna foto recente — scatta o importa una foto per ritrovarla qui")
+    static let clearHistory = Loc8(zh: "清空全部", zhTW: "清空全部", en: "Clear all",
+        ja: "すべて削除", ko: "모두 삭제", fr: "Tout effacer", de: "Alle löschen", it: "Cancella tutto")
+    static let deleteItem = Loc8(zh: "删除", zhTW: "刪除", en: "Delete",
+        ja: "削除", ko: "삭제", fr: "Supprimer", de: "Löschen", it: "Elimina")
 
     // Spec picker
     static let chooseDoc = Loc8(zh: "选择证件", zhTW: "選擇證件", en: "Choose document",
@@ -191,23 +224,30 @@ enum S {
         fr: "Les yeux doivent être ouverts et regarder l'objectif",
         de: "Augen müssen offen sein und in die Kamera blicken",
         it: "Occhi aperti e rivolti all'obiettivo")
-    static let issueExpression = Loc8(zh: "表情要自然，嘴巴闭上", zhTW: "表情要自然，嘴巴閉上",
-        en: "Neutral expression with your mouth closed",
-        ja: "口を閉じ、自然な表情にしてください", ko: "입을 다물고 자연스러운 표정이어야 해요",
-        fr: "Expression neutre, bouche fermée",
-        de: "Neutraler Ausdruck, Mund geschlossen",
-        it: "Espressione neutra, bocca chiusa")
-    static let issueGlasses = Loc8(zh: "眼镜不符合要求（反光或该摘掉）",
-        zhTW: "眼鏡不符合要求（反光或該摘掉）", en: "Glasses are a problem here — glare, or not allowed",
-        ja: "眼鏡に問題があります（反射、または不可）",
-        ko: "안경이 문제예요 — 반사가 있거나 허용되지 않아요",
-        fr: "Problème de lunettes — reflets, ou non autorisées",
-        de: "Brille ist ein Problem — Reflexe oder nicht erlaubt",
-        it: "Problema con gli occhiali — riflessi o non ammessi")
-    static let issueLighting = Loc8(zh: "光线太暗或太亮", zhTW: "光線太暗或太亮",
-        en: "Lighting is too dark or too bright", ja: "明るすぎるか暗すぎます",
-        ko: "너무 어둡거나 밝아요", fr: "Éclairage trop sombre ou trop clair",
-        de: "Beleuchtung zu dunkel oder zu hell", it: "Illuminazione troppo scura o chiara")
+    static let issueExpression = Loc8(zh: "表情要自然，嘴巴闭上不露齿笑", zhTW: "表情要自然，嘴巴閉上不露齒笑",
+        en: "Keep a neutral expression — mouth closed, no big smile",
+        ja: "口を閉じ、歯を見せず自然な表情にしてください", ko: "입을 다물고 웃지 않는 자연스러운 표정이어야 해요",
+        fr: "Expression neutre, bouche fermée sans grand sourire",
+        de: "Neutraler Ausdruck, Mund geschlossen ohne breites Lächeln",
+        it: "Espressione neutra, bocca chiusa senza sorriso")
+    static let issueGlasses = Loc8(zh: "眼镜不符合要求（有镜片反光或该摘下眼镜）",
+        zhTW: "眼鏡不符合要求（有鏡片反光或該摘下眼鏡）", en: "Glasses are a problem here — lens glare, or not allowed",
+        ja: "眼鏡に問題があります（レンズの反射、または着用不可）",
+        ko: "안경이 문제예요 — 빛 반사가 있거나 착용이 불가해요",
+        fr: "Problème de lunettes — reflets sur les verres, ou interdites",
+        de: "Brille ist ein Problem — Spiegelung auf Gläsern oder verboten",
+        it: "Problema con gli occhiali — riflessi sulle lenti o vietati")
+    static let issueLighting = Loc8(zh: "整体光线太暗或太亮", zhTW: "整體光線太暗或太亮",
+        en: "Overall lighting is too dark or too bright", ja: "全体が明るすぎるか暗すぎます",
+        ko: "전체 조명이 너무 어둡거나 밝아요", fr: "Éclairage global trop sombre ou trop clair",
+        de: "Gesamtbeleuchtung zu dunkel oder zu hell", it: "Illuminazione complessiva troppo scura o chiara")
+    static let issueFaceLighting = Loc8(zh: "面部左右光线不均（避免侧光阴影）", zhTW: "臉部左右光線不均（避免側光陰影）",
+        en: "Uneven shadow across face — face the light evenly",
+        ja: "顔の左右で明るさに差があります。正面から光を受けてください",
+        ko: "얼굴 좌우 밝기가 달라요 — 조명을 정면으로 마주 보세요",
+        fr: "Ombre latérale sur le visage — placez-vous face à la lumière",
+        de: "Ungleichmäßiger Schatten im Gesicht — frontal zum Licht stellen",
+        it: "Ombra laterale sul viso — mettiti di fronte alla luce")
     static let issueBackground = Loc8(zh: "背景不符合要求，需要干净均匀的底色",
         zhTW: "背景不符合要求，需要乾淨均勻的底色",
         en: "Background doesn't meet the rule — it needs to be plain and even",
@@ -252,7 +292,9 @@ enum S {
 enum SpecText {
     static func country(_ code: String) -> Loc8 {
         switch code.uppercased() {
-        case "CN": return Loc8(zh: "中国", zhTW: "中國", en: "China", ja: "中国", ko: "중국", fr: "Chine", de: "China", it: "Cina")
+        case "CN": return Loc8(zh: "中国", zhTW: "中國大陸", en: "China", ja: "中国", ko: "중국", fr: "Chine", de: "China", it: "Cina")
+        case "HK": return Loc8(zh: "中国香港", zhTW: "香港", en: "Hong Kong", ja: "香港", ko: "홍콩", fr: "Hong Kong", de: "Hongkong", it: "Hong Kong")
+        case "TW": return Loc8(zh: "中国台湾", zhTW: "台灣", en: "Taiwan", ja: "台湾", ko: "대만", fr: "Taïwan", de: "Taiwan", it: "Taiwan")
         case "US": return Loc8(zh: "美国", zhTW: "美國", en: "United States", ja: "アメリカ", ko: "미국", fr: "États-Unis", de: "USA", it: "Stati Uniti")
         case "CA": return Loc8(zh: "加拿大", zhTW: "加拿大", en: "Canada", ja: "カナダ", ko: "캐나다", fr: "Canada", de: "Kanada", it: "Canada")
         case "AU": return Loc8(zh: "澳大利亚", zhTW: "澳洲", en: "Australia", ja: "オーストラリア", ko: "호주", fr: "Australie", de: "Australien", it: "Australia")
@@ -260,7 +302,7 @@ enum SpecText {
         case "KR": return Loc8(zh: "韩国", zhTW: "韓國", en: "South Korea", ja: "韓国", ko: "대한민국", fr: "Corée du Sud", de: "Südkorea", it: "Corea del Sud")
         case "IN": return Loc8(zh: "印度", zhTW: "印度", en: "India", ja: "インド", ko: "인도", fr: "Inde", de: "Indien", it: "India")
         case "JP": return Loc8(zh: "日本", zhTW: "日本", en: "Japan", ja: "日本", ko: "일본", fr: "Japon", de: "Japan", it: "Giappone")
-        case "SG": return Loc8(zh: "新加坡", zhTW: "新加坡", en: "Singapore", ja: "シンガポール", ko: "싱가포르", fr: "Singapour", de: "Singapur", it: "Singapore")
+        case "SG": return Loc8(zh: "新加坡", zhTW: "新加坡", en: "Singapore", ja: "シンガポール", ko: "싱ガ포르".replacingOccurrences(of: "ガ", with: "가"), fr: "Singapour", de: "Singapur", it: "Singapore")
         case "EU": return Loc8(zh: "申根", zhTW: "申根", en: "Schengen", ja: "シェンゲン", ko: "솅겐", fr: "Schengen", de: "Schengen", it: "Schengen")
         case "CUSTOM": return Loc8(zh: "自定义", zhTW: "自訂", en: "Custom", ja: "カスタム", ko: "사용자 지정", fr: "Personnalisé", de: "Benutzerdefiniert", it: "Personalizzato")
         default: return Loc8(zh: code, zhTW: code, en: code, ja: code, ko: code, fr: code, de: code, it: code)
@@ -272,14 +314,70 @@ enum SpecText {
         case .passport: return Loc8(zh: "护照", zhTW: "護照", en: "Passport", ja: "パスポート", ko: "여권", fr: "Passeport", de: "Reisepass", it: "Passaporto")
         case .visa: return Loc8(zh: "签证", zhTW: "簽證", en: "Visa", ja: "ビザ", ko: "비자", fr: "Visa", de: "Visum", it: "Visto")
         case .idCard: return Loc8(zh: "身份证", zhTW: "身分證", en: "ID Card", ja: "IDカード", ko: "신분증", fr: "Carte d'identité", de: "Ausweis", it: "Carta d'identità")
-        case .driverLicense: return Loc8(zh: "驾照", zhTW: "駕照", en: "Driver License", ja: "運転免許", ko: "운전면허", fr: "Permis", de: "Führerschein", it: "Patente")
-        case .residencePermit: return Loc8(zh: "居留许可", zhTW: "居留許可", en: "Residence Permit", ja: "在留カード", ko: "거주허가", fr: "Titre de séjour", de: "Aufenthaltstitel", it: "Permesso di soggiorno")
+        case .driverLicense: return Loc8(zh: "驾驶证", zhTW: "駕照", en: "Driver License", ja: "運転免許", ko: "운전면허", fr: "Permis", de: "Führerschein", it: "Patente")
+        case .residencePermit: return Loc8(zh: "通行证 / 居留", zhTW: "通行證 / 居留", en: "Travel / Residence Permit", ja: "通行証・在留許可", ko: "통행증 / 체류허가", fr: "Titre de séjour", de: "Aufenthaltstitel", it: "Permesso di soggiorno")
         case .general: return Loc8(zh: "证件照", zhTW: "證件照", en: "ID Photo", ja: "証明写真", ko: "증명사진", fr: "Photo d'identité", de: "Passfoto", it: "Foto tessera")
         }
     }
 
-    /// "中国 证件照 25×35" / "China ID Photo 25×35" — country + type, plus size for general photos.
+    /// Specific 8-language titles for specs where generic `country + docType` would lose the
+    /// exact document distinction (e.g. Social Security vs Resident ID, CET/Teacher Exam vs 1-inch).
+    private static func specificTitle(_ id: String) -> Loc8? {
+        switch id {
+        case "cn-1inch":
+            return Loc8(zh: "中国 一寸证件照 (25×35)", zhTW: "中國 一吋證件照 (25×35)", en: "China 1-inch ID (25×35)",
+                        ja: "中国 1寸証明写真 (25×35)", ko: "중국 1인치 증명사진 (25×35)",
+                        fr: "Chine Photo 1 pouce (25×35)", de: "China 1-Zoll-Foto (25×35)", it: "Cina Foto 1 pollice (25×35)")
+        case "cn-2inch":
+            return Loc8(zh: "中国 二寸证件照 (35×49)", zhTW: "中國 二吋證件照 (35×49)", en: "China 2-inch ID (35×49)",
+                        ja: "中国 2寸証明写真 (35×49)", ko: "중국 2인치 증명사진 (35×49)",
+                        fr: "Chine Photo 2 pouces (35×49)", de: "China 2-Zoll-Foto (35×49)", it: "Cina Foto 2 pollici (35×49)")
+        case "cn-idcard":
+            return Loc8(zh: "中国 居民身份证", zhTW: "中國 居民身分證", en: "China Resident ID Card",
+                        ja: "中国 居民身分証", ko: "중국 주민신분증",
+                        fr: "Chine Carte d'identité", de: "China Personalausweis", it: "Cina Carta d'identità")
+        case "cn-social":
+            return Loc8(zh: "中国 社保卡 / 医保卡", zhTW: "中國 社保卡 / 醫保卡", en: "China Social Security Card",
+                        ja: "中国 社会保障カード", ko: "중국 사회보장카드",
+                        fr: "Chine Carte sécurité sociale", de: "China Sozialversicherungskarte", it: "Cina Tessera previdenziale")
+        case "cn-driver":
+            return Loc8(zh: "中国 机动车驾驶证", zhTW: "中國 機動車駕駛證", en: "China Driver License",
+                        ja: "中国 運転免許証", ko: "중국 운전면허증",
+                        fr: "Chine Permis de conduire", de: "China Führerschein", it: "Cina Patente di guida")
+        case "cn-exam":
+            return Loc8(zh: "中国 四六级 / 教资 / 公考报名照", zhTW: "中國 四六級 / 教資 / 公考報名照", en: "China Exam (CET / Teacher / Civil)",
+                        ja: "中国 資格・試験申込写真", ko: "중국 자격증·공무원 시험 사진",
+                        fr: "Chine Photo d'examen officiel", de: "China Prüfungsfoto", it: "Cina Foto per esami pubblici")
+        case "cn-grad":
+            return Loc8(zh: "中国 学信网 / 毕业证采集 (480×640)", zhTW: "中國 學信網 / 畢業證採集 (480×640)", en: "China CHSI Graduation (480×640)",
+                        ja: "中国 学信網・卒業証書 (480×640)", ko: "중국 학신망 졸업사진 (480×640)",
+                        fr: "Chine Diplôme CHSI (480×640)", de: "China Abschlussfoto CHSI (480×640)", it: "Cina Foto laurea CHSI (480×640)")
+        case "cn-hkmo":
+            return Loc8(zh: "中国 往来港澳台通行证", zhTW: "中國 往來港澳台通行證", en: "HK / Macau / Taiwan Travel Permit",
+                        ja: "香港・マカオ・台湾往来通行証", ko: "홍콩·마카오·대만 통행증",
+                        fr: "Permis voyage HK / Macao / Taïwan", de: "Reisegenehmigung HK / Macau / Taiwan", it: "Permesso viaggio HK / Macao / Taiwan")
+        case "hk-passport":
+            return Loc8(zh: "中国香港 特区护照 / 回乡证", zhTW: "香港 特區護照 / 回鄉證", en: "Hong Kong SAR Passport",
+                        ja: "香港特別行政区パスポート", ko: "홍콩 특별행정구 여권",
+                        fr: "Passeport RAS de Hong Kong", de: "Reisepass Hongkong", it: "Passaporto Hong Kong")
+        case "tw-passport":
+            return Loc8(zh: "中国台湾 护照 / 入台证", zhTW: "台灣 護照 / 入台證", en: "Taiwan Passport / Entry Permit",
+                        ja: "台湾パスポート・入台証", ko: "대만 여권 / 입대증",
+                        fr: "Passeport Taïwan", de: "Reisepass Taiwan", it: "Passaporto Taiwan")
+        case "jp-resume":
+            return Loc8(zh: "日本 履历书 / 在留卡 (30×40)", zhTW: "日本 履歷書 / 在留卡 (30×40)", en: "Japan Resume / Residence Card (30×40)",
+                        ja: "日本 履歴書・在留カード (30×40)", ko: "일본 이력서·재류카드 (30×40)",
+                        fr: "Japon CV / Carte de séjour (30×40)", de: "Japan Lebenslauf / Aufenthaltskarte", it: "Giappone CV / Carta di soggiorno")
+        default:
+            return nil
+        }
+    }
+
+    /// Localized human-readable title for a spec.
     static func name(_ spec: PhotoSpec) -> String {
+        if let specific = specificTitle(spec.id) {
+            return specific.t
+        }
         var s = country(spec.country).t + " " + docType(spec.docType).t
         if spec.docType == .general {
             s += " \(Int(spec.outputSize.widthMM))×\(Int(spec.outputSize.heightMM))"
@@ -292,6 +390,12 @@ enum SpecText {
         let h = hex.uppercased()
         if h == "#FFFFFF" {
             return Loc8(zh: "白色", zhTW: "白色", en: "white", ja: "白", ko: "흰색", fr: "blanc", de: "weißen", it: "bianco").t
+        }
+        if h == "#438EDB" || h == "#3366CC" {
+            return Loc8(zh: "蓝色", zhTW: "藍色", en: "blue", ja: "青", ko: "파란색", fr: "bleu", de: "blauen", it: "blu").t
+        }
+        if h == "#D9001B" {
+            return Loc8(zh: "红色", zhTW: "紅色", en: "red", ja: "赤", ko: "빨간색", fr: "rouge", de: "roten", it: "rosso").t
         }
         // EDEDED / ECECEC and other light grays
         return Loc8(zh: "浅灰白", zhTW: "淺灰白", en: "off-white", ja: "オフホワイト", ko: "연회색",

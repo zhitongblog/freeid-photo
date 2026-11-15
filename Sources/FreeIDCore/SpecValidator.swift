@@ -12,6 +12,9 @@ public struct ValidationTolerances: Sendable {
     public var maxCenterOffset: Double = 0.06
     public var minBrightness: Double = 0.35
     public var maxBrightness: Double = 0.92
+    /// Minimum allowed left-vs-right cheek lighting symmetry (0..1). Below ~0.60 indicates a
+    /// strong side shadow ("阴阳脸").
+    public var minLightingUniformity: Double = 0.60
     public init() {}
 }
 
@@ -161,6 +164,16 @@ public enum SpecValidator {
                 : LocalizedText(en: "Too bright — reduce light", zh: "太亮，请减弱光线")
         ))
 
+        // 11b. Facial lighting balance (left vs right cheek shadow / 阴阳脸).
+        checks.append(boolCheck(
+            id: "faceLighting",
+            title: LocalizedText(en: "Even face lighting", zh: "面部光线均匀"),
+            ok: m.lightingUniformity >= t.minLightingUniformity,
+            okDetail: LocalizedText(en: "Face is evenly lit", zh: "面部左右受光均匀"),
+            failDetail: LocalizedText(en: "Uneven shadow across face — face the light",
+                                      zh: "面部左右光线不均，请正对光源避免侧影")
+        ))
+
         // 12. Glasses.
         switch spec.glasses {
         case .forbidden:
@@ -181,11 +194,10 @@ public enum SpecValidator {
             ))
         }
 
-        // Expression / eye / glasses detection from face landmarks is NOT reliable enough
-        // to block capture — the lip-gap heuristic flagged "mouth open" on clearly-closed
-        // mouths. Keep these advisory for every spec: shown so the user can self-check
-        // (people judge their own expression better than a landmark ratio), never locking
-        // the shutter. Reliable, decisive checks (one face, pose, geometry, color) still gate.
+        // Expression / eye / glasses detection from face landmarks & periocular heuristics is
+        // kept advisory for every spec: shown so the user can self-check (especially on
+        // imported photos), never locking the shutter. Reliable, decisive checks (one face,
+        // pose, geometry, background color) still gate.
         checks = checks.map { c in
             guard c.status == .fail, Self.advisoryChecks.contains(c.id) else { return c }
             return CheckResult(id: c.id, title: c.title, status: .warn, detail: c.detail)
@@ -193,11 +205,9 @@ public enum SpecValidator {
 
         // Per-country leniency: when the destination allows digital editing, the checks
         // we can fix in the export pipeline (crop reframes head/eye/centering, background
-        // replacement, exposure adjustment) should NOT block capture — they become
-        // advisory warnings that get auto-corrected on export. Only the things that must
-        // be physically right at capture time (face count, pose, eyes, mouth, expression,
-        // glasses) keep blocking. Strict countries (US, UK...) keep every check hard,
-        // because nothing may be altered after the shot.
+        // replacement, exposure/lighting adjustment) should NOT block capture — they become
+        // advisory warnings that get auto-corrected on export. Strict countries (US, UK...)
+        // keep every check hard, because nothing may be altered after the shot.
         if spec.digitalEditPolicy == .allowed {
             checks = checks.map { c in
                 guard c.status == .fail, Self.postFixableChecks.contains(c.id) else { return c }
@@ -211,15 +221,15 @@ public enum SpecValidator {
         return ComplianceReport(specID: spec.id, checks: checks)
     }
 
-    /// Checks the export pipeline can fix after capture (crop, background replace,
-    /// exposure). Downgraded from fail to warn for edit-allowed specs.
+    /// Checks the export pipeline can fix or soften after capture (crop, background replace,
+    /// exposure/lighting). Downgraded from fail to warn for edit-allowed specs.
     static let postFixableChecks: Set<String> = [
         "headHeight", "eyeLine", "centering",
-        "background.uniformity", "background.color", "exposure",
+        "background.uniformity", "background.color", "exposure", "faceLighting",
     ]
 
-    /// Checks driven by unreliable landmark heuristics. Advisory for EVERY spec — shown
-    /// as warnings, never blocking capture, so a false "mouth open" can't lock the shutter.
+    /// Checks driven by heuristic vision signals. Advisory for EVERY spec — shown
+    /// as warnings, never blocking capture, so a false positive can't lock the shutter.
     static let advisoryChecks: Set<String> = [
         "mouthClosed", "neutral", "eyesOpen", "glasses",
     ]

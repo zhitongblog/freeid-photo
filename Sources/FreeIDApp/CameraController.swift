@@ -10,16 +10,22 @@ import CoreImage
 import ImageIO
 #endif
 
-/// Drives the front camera: a throttled live stream for the compliance HUD, plus a
+/// Drives the front/back camera: a throttled live stream for the compliance HUD, plus a
 /// full-resolution still capture that runs straight through the export pipeline.
 ///
 ///   live:    AVCaptureVideoDataOutput ─(every Nth frame)→ engine → SpecValidator → onReport
 ///   capture: AVCapturePhotoOutput ─→ engine.metrics → ExportPipeline.export → JPEG Data
 ///
-///Capture work stays on the camera queue; only Sendable `Data` crosses back to the UI,
-/// so it's clean under Swift 6 concurrency. On the Simulator there is no camera, so the
-/// app still builds and renders; capture/preview are verified on a real device.
+/// Capture work stays on the camera queue; only Sendable `Data` / `FaceMetrics` cross back to
+/// the UI, so it's clean under Swift 6 concurrency. On the Simulator there is no camera, so
+/// the app still builds and renders; capture/preview are verified on a real device.
 final class CameraController: NSObject, @unchecked Sendable {
+
+    struct CaptureOutcome: Sendable {
+        let exportedData: Data
+        let sourceJPEG: Data
+        let metrics: FaceMetrics
+    }
 
     var spec: PhotoSpec?
     var onReport: (@MainActor (ComplianceReport) -> Void)?
@@ -35,7 +41,7 @@ final class CameraController: NSObject, @unchecked Sendable {
     private var frameCounter = 0
     private let processEveryNthFrame = 4
     private var configured = false
-    private var captureCompletion: (@Sendable (Data?) -> Void)?
+    private var captureCompletion: (@Sendable (CaptureOutcome?) -> Void)?
     private var captureDevice: AVCaptureDevice?
     private weak var previewLayer: AVCaptureVideoPreviewLayer?
     /// Tracks the physical orientation so we can deliver upright frames/photos and keep the
@@ -48,7 +54,7 @@ final class CameraController: NSObject, @unchecked Sendable {
     /// Background color (#RRGGBB) to composite behind the subject; nil = the spec's default.
     private var pendingBackgroundHex: String?
     /// The last captured frame + its metrics, kept so the result screen can re-export with a
-    /// different background color without making the user shoot again.
+    /// different spec, background color, or brightness/smoothing without shooting again.
     private var lastSource: CGImage?
     private var lastMetrics: FaceMetrics?
 
@@ -72,15 +78,12 @@ final class CameraController: NSObject, @unchecked Sendable {
 
     func stop() { queue.async { [weak self] in self?.session.stopRunning() } }
 
-    /// Capture a still and run it through the export pipeline for `spec`. For edit-allowed
-    /// specs the background is replaced (to `backgroundHex`, or the spec's default if nil);
-    /// strict specs keep the real photo (crop/resize only). Returns spec-sized JPEG, or nil.
-    func captureAndExport(backgroundHex: String?, completion: @escaping @Sendable (Data?) -> Void) {
+    /// Capture a still and run it through the export pipeline for `spec`. Returns the finished
+    /// JPEG plus a downscaled upright original JPEG + metrics for local history storage.
+    func captureAndExport(backgroundHex: String?, completion: @escaping @Sendable (CaptureOutcome?) -> Void) {
         queue.async {
             guard self.spec != nil else { completion(nil); return }
             self.pendingBackgroundHex = backgroundHex
-            // Orient the still to the CURRENT physical orientation at the moment of capture,
-            // so a portrait shot is delivered (and tagged) upright rather than sideways.
             self.applyRotation(to: self.photoOutput.connection(with: .video))
             self.captureCompletion = completion
             let settings = AVCapturePhotoSettings()
@@ -88,37 +91,53 @@ final class CameraController: NSObject, @unchecked Sendable {
         }
     }
 
-    /// Re-run the export on the LAST captured frame with a new background color — lets the
-    /// result screen preview white/blue/red/gray instantly without re-shooting.
-    func reexport(backgroundHex: String?, completion: @escaping @Sendable (Data?) -> Void) {
+    /// Re-run the export on the LAST captured frame for `targetSpec` with updated background
+    /// color or brightness/skin adjustments.
+    func reexport(
+        spec targetSpec: PhotoSpec,
+        backgroundHex: String?,
+        brightnessBoost: Double = 0,
+        skinSmoothing: Double = 0,
+        completion: @escaping @Sendable (Data?) -> Void
+    ) {
         queue.async {
-            guard let cg = self.lastSource, let metrics = self.lastMetrics, let spec = self.spec else {
+            guard let cg = self.lastSource, let metrics = self.lastMetrics else {
                 completion(nil); return
             }
-            completion(self.exportData(from: cg, metrics: metrics, spec: spec, backgroundHex: backgroundHex))
+            completion(self.exportData(
+                from: cg, metrics: metrics, spec: targetSpec,
+                backgroundHex: backgroundHex,
+                brightnessBoost: brightnessBoost, skinSmoothing: skinSmoothing))
         }
     }
 
-    /// Render a print sheet from the LAST captured frame — copies of the finished photo laid
-    /// out on photo-lab paper, so the user can hand one file to a print counter.
-    func printSheet(paper: ExportPipeline.PrintPaper, backgroundHex: String?,
-                    completion: @escaping @Sendable (Data?) -> Void) {
+    /// Render a print sheet from the LAST captured frame.
+    func printSheet(
+        spec targetSpec: PhotoSpec,
+        paper: ExportPipeline.PrintPaper,
+        backgroundHex: String?,
+        brightnessBoost: Double = 0,
+        skinSmoothing: Double = 0,
+        completion: @escaping @Sendable (Data?) -> Void
+    ) {
         queue.async {
-            guard let cg = self.lastSource, let metrics = self.lastMetrics, let spec = self.spec else {
+            guard let cg = self.lastSource, let metrics = self.lastMetrics else {
                 completion(nil); return
             }
             let opts = ExportPipeline.Options(
-                replaceBackground: spec.digitalEditPolicy == .allowed, backgroundHex: backgroundHex)
-            guard let photo = try? self.pipeline.export(image: cg, spec: spec, metrics: metrics, options: opts),
-                  let sheet = self.pipeline.printSheet(photo: photo, spec: spec, paper: paper) else {
+                replaceBackground: targetSpec.digitalEditPolicy == .allowed,
+                backgroundHex: backgroundHex,
+                brightnessBoost: brightnessBoost,
+                skinSmoothing: skinSmoothing)
+            guard let photo = try? self.pipeline.export(image: cg, spec: targetSpec, metrics: metrics, options: opts),
+                  let sheet = self.pipeline.printSheet(photo: photo, spec: targetSpec, paper: paper) else {
                 completion(nil); return
             }
-            completion(try? self.pipeline.jpegData(sheet.image, dpi: spec.dpi))
+            completion(try? self.pipeline.jpegData(sheet.image, dpi: targetSpec.dpi))
         }
     }
 
-    /// Flip between the front (selfie) and back (someone-helps) camera, reconfiguring the
-    /// session input and rebuilding the rotation coordinator for the new device.
+    /// Flip between the front (selfie) and back (someone-helps) camera.
     func switchCamera() {
         queue.async {
             self.session.beginConfiguration()
@@ -153,9 +172,6 @@ final class CameraController: NSObject, @unchecked Sendable {
         rebuildRotationCoordinator()
     }
 
-    /// Rebuild `AVCaptureDevice.RotationCoordinator` bound to the active device and preview
-    /// layer, and observe both preview and capture rotation angles so unfolding/rotating an
-    /// iPhone Duo (or switching displays/postures) keeps the preview and video feed upright.
     private func rebuildRotationCoordinator() {
         guard let device = captureDevice else { return }
         let coord = AVCaptureDevice.RotationCoordinator(device: device, previewLayer: previewLayer)
@@ -175,15 +191,35 @@ final class CameraController: NSObject, @unchecked Sendable {
         }
     }
 
-    /// Shared crop + optional background replace + encode, used by both capture and re-export.
-    private func exportData(from cg: CGImage, metrics: FaceMetrics, spec: PhotoSpec,
-                            backgroundHex: String?) -> Data? {
+    private func exportData(
+        from cg: CGImage, metrics: FaceMetrics, spec: PhotoSpec,
+        backgroundHex: String?, brightnessBoost: Double = 0, skinSmoothing: Double = 0
+    ) -> Data? {
         let opts = ExportPipeline.Options(
-            replaceBackground: spec.digitalEditPolicy == .allowed, backgroundHex: backgroundHex)
+            replaceBackground: spec.digitalEditPolicy == .allowed,
+            backgroundHex: backgroundHex,
+            brightnessBoost: brightnessBoost,
+            skinSmoothing: skinSmoothing)
         guard let out = try? pipeline.export(image: cg, spec: spec, metrics: metrics, options: opts) else {
             return nil
         }
         return try? pipeline.jpegData(out, spec: spec)
+    }
+
+    /// Downscale high-megapixel originals to ≤ 2000px on the long edge before saving to local
+    /// history so each entry takes ~250 KB instead of 6 MB while preserving plenty of detail.
+    fileprivate func historyJPEG(from cg: CGImage) -> Data? {
+        let maxDim = 2000.0
+        let w = Double(cg.width), h = Double(cg.height)
+        let target: CGImage
+        if max(w, h) > maxDim {
+            let s = maxDim / max(w, h)
+            let ci = CIImage(cgImage: cg).transformed(by: CGAffineTransform(scaleX: s, y: s))
+            target = ciContext.createCGImage(ci, from: ci.extent) ?? cg
+        } else {
+            target = cg
+        }
+        return try? pipeline.jpegData(target, quality: 0.90)
     }
 
     private func applyPreviewRotation(_ angle: CGFloat) {
@@ -199,7 +235,6 @@ final class CameraController: NSObject, @unchecked Sendable {
         }
     }
 
-    /// Set a connection's rotation to keep video/photo upright for the current orientation.
     private func applyRotation(to connection: AVCaptureConnection?) {
         guard let connection, let coord = rotationCoordinator else { return }
         let angle = coord.videoRotationAngleForHorizonLevelCapture
@@ -210,9 +245,11 @@ final class CameraController: NSObject, @unchecked Sendable {
     func start() {}
     func stop() {}
     func switchCamera() {}
-    func captureAndExport(backgroundHex: String?, completion: @escaping @Sendable (Data?) -> Void) { completion(nil) }
-    func reexport(backgroundHex: String?, completion: @escaping @Sendable (Data?) -> Void) { completion(nil) }
-    func printSheet(paper: ExportPipeline.PrintPaper, backgroundHex: String?,
+    func captureAndExport(backgroundHex: String?, completion: @escaping @Sendable (CaptureOutcome?) -> Void) { completion(nil) }
+    func reexport(spec targetSpec: PhotoSpec, backgroundHex: String?, brightnessBoost: Double = 0,
+                  skinSmoothing: Double = 0, completion: @escaping @Sendable (Data?) -> Void) { completion(nil) }
+    func printSheet(spec targetSpec: PhotoSpec, paper: ExportPipeline.PrintPaper, backgroundHex: String?,
+                    brightnessBoost: Double = 0, skinSmoothing: Double = 0,
                     completion: @escaping @Sendable (Data?) -> Void) { completion(nil) }
     #endif
 }
@@ -227,9 +264,6 @@ extension CameraController: AVCaptureVideoDataOutputSampleBufferDelegate {
         let ci = CIImage(cvPixelBuffer: pixelBuffer)
         guard let cg = ciContext.createCGImage(ci, from: ci.extent),
               let metrics = try? engine.metrics(from: cg) else { return }
-        // The live frame is the full sensor image, not pre-framed to the spec. Reproject
-        // through the export crop so head/eye/centering reflect the photo we'd actually
-        // produce — otherwise those checks fail on the whole frame and lock the shutter.
         let framed = ExportGeometry.reprojected(metrics, spec: spec)
         let report = SpecValidator.validate(framed, against: spec)
         let cb = onReport
@@ -242,17 +276,20 @@ extension CameraController: AVCapturePhotoCaptureDelegate {
                      error: Error?) {
         let completion = captureCompletion
         captureCompletion = nil
-        func finish(_ data: Data?) { DispatchQueue.main.async { completion?(data) } }
+        func finish(_ outcome: CaptureOutcome?) { DispatchQueue.main.async { completion?(outcome) } }
 
         guard error == nil, let fileData = photo.fileDataRepresentation(),
               let cg = ImageLoading.uprightCGImage(from: fileData, context: ciContext),
               let spec else { finish(nil); return }
 
         guard let metrics = try? engine.metrics(from: cg), metrics.faceCount == 1 else { finish(nil); return }
-        // Keep the source so the result screen can re-export with a different background color.
         lastSource = cg
         lastMetrics = metrics
-        finish(exportData(from: cg, metrics: metrics, spec: spec, backgroundHex: pendingBackgroundHex))
+        guard let exported = exportData(from: cg, metrics: metrics, spec: spec, backgroundHex: pendingBackgroundHex) else {
+            finish(nil); return
+        }
+        let srcJPEG = historyJPEG(from: cg) ?? exported
+        finish(CaptureOutcome(exportedData: exported, sourceJPEG: srcJPEG, metrics: metrics))
     }
 }
 #endif

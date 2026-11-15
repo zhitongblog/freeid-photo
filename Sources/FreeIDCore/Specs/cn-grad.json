@@ -1,0 +1,22 @@
+{
+  "id": "cn-grad",
+  "country": "CN",
+  "docType": "general",
+  "displayName": { "en": "China Academic / CHSI Graduation (480x640)", "zh": "学信网 / 毕业证图像采集" },
+  "outputSize": { "widthMM": 40.64, "heightMM": 54.19 },
+  "dpi": 300,
+  "headHeight": { "min": 30, "max": 38 },
+  "eyeLineFromBottom": { "min": 28, "max": 36 },
+  "background": {
+    "name": { "en": "Blue", "zh": "浅蓝色" },
+    "hex": "#438EDB",
+    "toleranceDeltaE": 14,
+    "minUniformity": 0.85
+  },
+  "digitalEditPolicy": "allowed",
+  "expression": { "neutral": true, "mouthClosed": true, "eyesOpen": true },
+  "glasses": "allowedNoGlare",
+  "fileSpec": { "pixelWidth": 480, "pixelHeight": 640, "minKB": 20, "maxKB": 60, "format": "jpeg" },
+  "officialSourceURL": "https://www.chsi.com.cn/",
+  "lastVerified": "2026-11-15"
+}

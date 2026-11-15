@@ -46,6 +46,8 @@ public struct FaceMetrics: Codable, Sendable, Equatable {
 
     /// 0..1 overall scene luminance. Too low = underexposed, too high = blown out.
     public let brightness: Double
+    /// 0..1 left-vs-right facial lighting symmetry (1 = balanced, low = harsh side shadow / 阴阳脸).
+    public let lightingUniformity: Double
 
     public init(
         imageWidth: Int, imageHeight: Int, faceCount: Int,
@@ -53,7 +55,8 @@ public struct FaceMetrics: Codable, Sendable, Equatable {
         rollDegrees: Double, yawDegrees: Double, pitchDegrees: Double,
         eyesOpen: Bool, mouthClosed: Bool, neutralExpression: Bool,
         backgroundUniformity: Double, backgroundMeanHex: String,
-        glassesDetected: Bool, glareOnGlasses: Bool, brightness: Double
+        glassesDetected: Bool, glareOnGlasses: Bool, brightness: Double,
+        lightingUniformity: Double = 1.0
     ) {
         self.imageWidth = imageWidth; self.imageHeight = imageHeight; self.faceCount = faceCount
         self.crownY = crownY; self.chinY = chinY; self.eyeLineY = eyeLineY
@@ -63,6 +66,39 @@ public struct FaceMetrics: Codable, Sendable, Equatable {
         self.backgroundUniformity = backgroundUniformity; self.backgroundMeanHex = backgroundMeanHex
         self.glassesDetected = glassesDetected; self.glareOnGlasses = glareOnGlasses
         self.brightness = brightness
+        self.lightingUniformity = lightingUniformity
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case imageWidth, imageHeight, faceCount
+        case crownY, chinY, eyeLineY, faceCenterX
+        case rollDegrees, yawDegrees, pitchDegrees
+        case eyesOpen, mouthClosed, neutralExpression
+        case backgroundUniformity, backgroundMeanHex
+        case glassesDetected, glareOnGlasses, brightness, lightingUniformity
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        imageWidth = try c.decode(Int.self, forKey: .imageWidth)
+        imageHeight = try c.decode(Int.self, forKey: .imageHeight)
+        faceCount = try c.decode(Int.self, forKey: .faceCount)
+        crownY = try c.decode(Double.self, forKey: .crownY)
+        chinY = try c.decode(Double.self, forKey: .chinY)
+        eyeLineY = try c.decode(Double.self, forKey: .eyeLineY)
+        faceCenterX = try c.decode(Double.self, forKey: .faceCenterX)
+        rollDegrees = try c.decode(Double.self, forKey: .rollDegrees)
+        yawDegrees = try c.decode(Double.self, forKey: .yawDegrees)
+        pitchDegrees = try c.decode(Double.self, forKey: .pitchDegrees)
+        eyesOpen = try c.decode(Bool.self, forKey: .eyesOpen)
+        mouthClosed = try c.decode(Bool.self, forKey: .mouthClosed)
+        neutralExpression = try c.decode(Bool.self, forKey: .neutralExpression)
+        backgroundUniformity = try c.decode(Double.self, forKey: .backgroundUniformity)
+        backgroundMeanHex = try c.decode(String.self, forKey: .backgroundMeanHex)
+        glassesDetected = try c.decode(Bool.self, forKey: .glassesDetected)
+        glareOnGlasses = try c.decode(Bool.self, forKey: .glareOnGlasses)
+        brightness = try c.decode(Double.self, forKey: .brightness)
+        lightingUniformity = try c.decodeIfPresent(Double.self, forKey: .lightingUniformity) ?? 1.0
     }
 
     /// Chin-to-crown height as a fraction of image height (0..1).

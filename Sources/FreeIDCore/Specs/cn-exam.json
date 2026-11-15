@@ -1,0 +1,22 @@
+{
+  "id": "cn-exam",
+  "country": "CN",
+  "docType": "general",
+  "displayName": { "en": "China Exam (CET / Teacher / Civil Service)", "zh": "四六级 / 教资 / 公考报名照" },
+  "outputSize": { "widthMM": 25, "heightMM": 35 },
+  "dpi": 300,
+  "headHeight": { "min": 19, "max": 25 },
+  "eyeLineFromBottom": { "min": 17, "max": 24 },
+  "background": {
+    "name": { "en": "White", "zh": "白色" },
+    "hex": "#FFFFFF",
+    "toleranceDeltaE": 14,
+    "minUniformity": 0.85
+  },
+  "digitalEditPolicy": "allowed",
+  "expression": { "neutral": true, "mouthClosed": true, "eyesOpen": true },
+  "glasses": "allowedNoGlare",
+  "fileSpec": { "pixelWidth": 295, "pixelHeight": 413, "minKB": 20, "maxKB": 100, "format": "jpeg" },
+  "officialSourceURL": "https://cet.neea.edu.cn/",
+  "lastVerified": "2026-11-15"
+}
